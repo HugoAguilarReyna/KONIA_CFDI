@@ -44,9 +44,14 @@ if origins_env:
         ext_origins = [o.strip() for o in origins_env.split(",")]
         origins.extend(ext_origins)
 
-# Eliminar duplicados y limpiar
-origins = list(set([o.rstrip('/') for o in origins if o]))
-print(f"INFO: CORS Origins configured: {origins}")
+# Eliminar duplicados, limpiar yasegurarse de que NO haya comodines '*'
+# El navegador bloquea '*' si allow_credentials=True
+origins = list(set([o.rstrip('/') for o in origins if o and o != "*"]))
+
+if not origins:
+    origins = ["https://konia-dashboard.onrender.com"]
+
+print(f"INFO: FINAL CORS Origins configured: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
