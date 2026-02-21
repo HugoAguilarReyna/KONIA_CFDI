@@ -90,8 +90,8 @@ async def login_for_access_token(response: Response, form_data: LoginRequest):
         value=f"Bearer {access_token}",
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
-        secure=False # Set to True in Production with HTTPS
+        samesite="none",
+        secure=True 
     )
     
     response.set_cookie(
@@ -146,8 +146,8 @@ async def refresh_token(request: Request, response: Response):
         value=f"Bearer {new_access_token}",
         httponly=True,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
-        secure=False
+        samesite="none",
+        secure=True
     )
     
     return {"message": "Token refreshed"}
