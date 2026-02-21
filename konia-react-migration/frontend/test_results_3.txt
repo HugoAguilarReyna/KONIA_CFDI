@@ -1,0 +1,69 @@
+
+Running 2 tests using 2 workers
+
+  Ô£ÿ  1 [chromium] ÔÇ║ e2e\dashboard.spec.js:7:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Login and KPI Verification (3.9s)
+  Ô£ÿ  2 [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow (9.9s)
+
+
+  1) [chromium] ÔÇ║ e2e\dashboard.spec.js:7:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Login and KPI Verification ÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('aside')
+    Expected: visible
+    Error: strict mode violation: locator('aside') resolved to 2 elements:
+        1) <aside class="hidden lg:block h-full z-30 flex-shrink-0">ÔÇª</aside> aka getByRole('complementary')
+        2) <aside class="fixed top-0 left-0 h-full w-[280px] z-50 shadow-2xl">ÔÇª</aside> aka locator('aside').nth(1)
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('aside')[22m
+
+
+      31 |         // 6. Verify Visuals - Sidebar (Desktop)
+      32 |         const sidebar = page.locator('aside');
+    > 33 |         await expect(sidebar).toBeVisible();
+         |                               ^
+      34 |     });
+      35 |
+      36 |     test('Traceability Navigation Flow', async ({ page }) => {
+        at D:\antigravity\Dashboard_Leopoldo\pm_dashb-main\konia-react-migration\frontend\e2e\dashboard.spec.js:33:31
+
+    attachment #1: screenshot (image/png) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    test-results\dashboard-Konia-Dashboard-E2E-Login-and-KPI-Verification-chromium\test-failed-1.png
+    ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    Error Context: test-results\dashboard-Konia-Dashboard-E2E-Login-and-KPI-Verification-chromium\error-context.md
+
+  2) [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow ÔöÇÔöÇ
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Trazabilidad de Facturas')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Trazabilidad de Facturas')[22m
+
+
+      47 |
+      48 |         // Verify Traceability View Loaded
+    > 49 |         await expect(page.getByText('Trazabilidad de Facturas')).toBeVisible();
+         |                                                                  ^
+      50 |         await expect(page.getByPlaceholder('Buscar por UUID, RFC o Monto...')).toBeVisible();
+      51 |     });
+      52 | });
+        at D:\antigravity\Dashboard_Leopoldo\pm_dashb-main\konia-react-migration\frontend\e2e\dashboard.spec.js:49:66
+
+    attachment #1: screenshot (image/png) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    test-results\dashboard-Konia-Dashboard-E2E-Traceability-Navigation-Flow-chromium\test-failed-1.png
+    ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    Error Context: test-results\dashboard-Konia-Dashboard-E2E-Traceability-Navigation-Flow-chromium\error-context.md
+
+  2 failed
+    [chromium] ÔÇ║ e2e\dashboard.spec.js:7:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Login and KPI Verification ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow ÔöÇÔöÇÔöÇ

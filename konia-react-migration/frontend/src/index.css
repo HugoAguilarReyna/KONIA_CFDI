@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background-dark text-slate-900 antialiased;
+    font-family: "Montserrat", sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Clase utilitaria para números */
+  .font-mono,
+  .font-jetbrains {
+    font-family: "JetBrains Mono", monospace !important;
+  }
+
+  /* Forzar Montserrat en TODOS los elementos */
+  * {
+    font-family: inherit;
+  }
+
+  /* Excepción explícita para elementos mono */
+  code,
+  pre,
+  kbd,
+  samp,
+  [class*="mono"],
+  [class*="JetBrains"] {
+    font-family: "JetBrains Mono", monospace !important;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors duration-200 font-medium;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 bg-white;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass rounded-xl;
+  }
+
+  /* Custom Scrollbar for Sidebar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.2);
+    border-radius: 20px;
+  }
+}

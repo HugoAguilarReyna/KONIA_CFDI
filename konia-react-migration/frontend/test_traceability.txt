@@ -1,0 +1,37 @@
+
+Running 1 test using 1 worker
+
+  Ô£ÿ  1 [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow (9.4s)
+
+
+  1) [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow ÔöÇÔöÇ
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Trazabilidad de Facturas')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Trazabilidad de Facturas')[22m
+
+
+      47 |
+      48 |         // Verify Traceability View Loaded
+    > 49 |         await expect(page.getByText('Trazabilidad de Facturas')).toBeVisible();
+         |                                                                  ^
+      50 |         await expect(page.getByPlaceholder('Buscar por UUID, RFC o Monto...')).toBeVisible();
+      51 |     });
+      52 | });
+        at D:\antigravity\Dashboard_Leopoldo\pm_dashb-main\konia-react-migration\frontend\e2e\dashboard.spec.js:49:66
+
+    attachment #1: screenshot (image/png) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    test-results\dashboard-Konia-Dashboard-E2E-Traceability-Navigation-Flow-chromium\test-failed-1.png
+    ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    Error Context: test-results\dashboard-Konia-Dashboard-E2E-Traceability-Navigation-Flow-chromium\error-context.md
+
+  1 failed
+    [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow ÔöÇÔöÇÔöÇ

@@ -1,0 +1,1130 @@
+import React, { useEffect, useState, useMemo } from "react";
+import { Search, Download, Filter, Activity, FileText, DollarSign, Calculator, PieChart as PieChartIcon } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, LabelList, ScatterChart, Scatter, ZAxis, CartesianGrid, ReferenceLine } from "recharts";
+import useFilterStore from "../../stores/useFilterStore";
+import dashboardService from "./dashboardService";
+import KPICard from "../../components/ui/KPICard";
+import ChartCard from "../../components/ui/ChartCard";
+const CustomTooltipScatter = ({ active, payload, formatMoney }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return /* @__PURE__ */ React.createElement("div", { style: {
+    background: "#1e293b",
+    borderRadius: "12px",
+    padding: "12px 16px",
+    minWidth: "240px",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.2)"
+  } }, /* @__PURE__ */ React.createElement("p", { style: {
+    fontFamily: "JetBrains Mono",
+    fontSize: "10px",
+    color: "#94a3b8",
+    marginBottom: "8px",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
+  } }, d.uuid), /* @__PURE__ */ React.createElement("div", { style: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "8px"
+  } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "9px",
+    color: "#64748b",
+    fontFamily: "Montserrat",
+    textTransform: "uppercase",
+    letterSpacing: "0.06em"
+  } }, "Facturado"), /* @__PURE__ */ React.createElement("p", { style: {
+    fontFamily: "JetBrains Mono",
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#26A69A"
+  } }, formatMoney(d.x, true))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "9px",
+    color: "#64748b",
+    fontFamily: "Montserrat",
+    textTransform: "uppercase",
+    letterSpacing: "0.06em"
+  } }, "Saldo Acum."), /* @__PURE__ */ React.createElement("p", { style: {
+    fontFamily: "JetBrains Mono",
+    fontSize: "12px",
+    fontWeight: 700,
+    color: d.y >= 0 ? "#6B84F3" : "#FF8A65"
+  } }, formatMoney(d.y, true)))), Math.abs(d.y - d.x) < d.x * 0.05 && /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "9px",
+    color: "#FF8A65",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    marginTop: "6px"
+  } }, "\u26A0 Sin pagos aplicados"), Math.abs(d.y) < 0.01 && /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "9px",
+    color: "#26A69A",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    marginTop: "6px"
+  } }, "\u2713 Completamente liquidado"));
+};
+const CustomBarHistogram = (props) => {
+  const { x, y, width, height, count } = props;
+  return /* @__PURE__ */ React.createElement("g", null, /* @__PURE__ */ React.createElement(
+    "rect",
+    {
+      x,
+      y,
+      width,
+      height,
+      rx: 4,
+      ry: 4,
+      fill: "#6B84F3",
+      fillOpacity: 0.85
+    }
+  ), height > 20 && /* @__PURE__ */ React.createElement(
+    "text",
+    {
+      x: x + width / 2,
+      y: y - 5,
+      textAnchor: "middle",
+      fontSize: 10,
+      fontFamily: "JetBrains Mono",
+      fill: "#6B84F3",
+      fontWeight: 700
+    },
+    count
+  ));
+};
+const DetalleUUIDView = () => {
+  const { filters } = useFilterStore();
+  const [data, setData] = useState({
+    registros: [],
+    kpis: { total_uuids: 0, saldo_total: 0, promedio_saldo: 0, ratio_emit_recib: 0 },
+    distribucion: {},
+    top10: [],
+    total: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [searchUUID, setSearchUUID] = useState("");
+  const [filtros, setFiltros] = useState({
+    segmento: null,
+    flujo: null,
+    saldo_min: 0,
+    page: 1,
+    limit: 25
+  });
+  const nombreMes = filters.month ? new Date(2026, filters.month - 1).toLocaleString("es-MX", { month: "long" }) : "Mes";
+  const anio = filters.year || "A\xF1o";
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        let periodo = filters.periodo;
+        if (!periodo && filters.year && filters.month) {
+          periodo = `${filters.year}-${filters.month.toString().padStart(2, "0")}`;
+        }
+        const result = await dashboardService.getDetalleUUID(
+          periodo,
+          filtros.page,
+          filtros.limit,
+          {
+            flujo: filtros.flujo,
+            segmento: filtros.segmento,
+            saldo_min: filtros.saldo_min,
+            uuid_search: searchUUID
+          }
+        );
+        setData({
+          registros: result.registros || [],
+          kpis: result.kpis || { total_uuids: 0, saldo_total: 0, promedio_saldo: 0, ratio_emit_recib: 0 },
+          distribucion: result.distribucion || {},
+          top10: result.top10 || [],
+          total: result.total || 0
+        });
+      } catch (error) {
+        console.error("Error fetching detail data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const debounceTimeout = setTimeout(() => {
+      fetchData();
+    }, 300);
+    return () => clearTimeout(debounceTimeout);
+  }, [filters.year, filters.month, filtros, searchUUID]);
+  const formatMoney = (amount, compact = false) => {
+    if (compact && amount >= 1e6) return `$${(amount / 1e6).toFixed(1)}M`;
+    if (compact && amount >= 1e3) return `$${(amount / 1e3).toFixed(1)}k`;
+    return new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+  const handleExportCSV = () => {
+    const headers = [
+      "UUID",
+      "SEGMENTO",
+      "FLUJO",
+      "1. (+) Total Facturado",
+      "2. (-) Notas de Cr\xE9dito (01)",
+      "4. (-) Devoluciones (03)",
+      "7. (-) Anticipo (07)",
+      "8. (-) Pagos Aplicados (08/09)",
+      "9. (=) Saldo Acumulado"
+    ];
+    const rows = data.registros.map((doc) => [
+      doc.uuid,
+      doc.segmento,
+      doc.flujo,
+      doc.conceptos?.["1. (+) Total Facturado"] ?? 0,
+      doc.conceptos?.["2. (-) Notas de Cr\xE9dito (01)"] ?? 0,
+      doc.conceptos?.["4. (-) Devoluciones (03)"] ?? 0,
+      doc.conceptos?.["7. (-) Anticipo (07)"] ?? 0,
+      doc.conceptos?.["8. (-) Pagos Aplicados (08/09)"] ?? 0,
+      doc.saldo_acumulado
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `detalle_uuid_${filters.periodo || ""}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const kpis = data.kpis;
+  const registros = data.registros;
+  const total = data.total;
+  const ScatterRiesgo = ({ scatterData: scatterData2, formatMoney: formatMoney2 }) => {
+    const todosLosPuntos = [
+      ...scatterData2.PUE,
+      ...scatterData2.PPD,
+      ...scatterData2.OTROS
+    ];
+    const maxX = Math.max(...todosLosPuntos.map((d) => d.x)) * 1.1;
+    const maxY = Math.max(...todosLosPuntos.map((d) => Math.abs(d.y))) * 1.1;
+    const minY = Math.min(...todosLosPuntos.map((d) => d.y)) * 1.1;
+    const CustomTooltipScatter2 = ({ active, payload }) => {
+      if (!active || !payload?.length) return null;
+      const d = payload[0]?.payload;
+      if (!d) return null;
+      const sinPagos = Math.abs(d.y - d.x) < d.x * 0.05;
+      const liquidado = Math.abs(d.y) < 0.01;
+      return /* @__PURE__ */ React.createElement("div", { style: {
+        background: "#1e293b",
+        borderRadius: "14px",
+        padding: "14px 18px",
+        minWidth: "260px",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
+        border: "1px solid rgba(255,255,255,0.08)"
+      } }, /* @__PURE__ */ React.createElement("p", { style: {
+        fontFamily: "JetBrains Mono",
+        fontSize: "10px",
+        color: "#64748b",
+        marginBottom: "10px",
+        letterSpacing: "0.03em"
+      } }, d.uuid.substring(0, 20), "..."), /* @__PURE__ */ React.createElement("span", { style: {
+        padding: "2px 10px",
+        borderRadius: "20px",
+        fontSize: "9px",
+        fontFamily: "Montserrat",
+        fontWeight: 800,
+        background: d.segmento === "PUE" ? "#6B84F330" : d.segmento === "PPD" ? "#78579930" : "#CBD0DA30",
+        color: d.segmento === "PUE" ? "#6B84F3" : d.segmento === "PPD" ? "#785799" : "#94a3b8",
+        marginBottom: "10px",
+        display: "inline-block"
+      } }, d.segmento), /* @__PURE__ */ React.createElement("div", { style: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "12px",
+        marginTop: "8px"
+      } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: {
+        fontSize: "9px",
+        color: "#64748b",
+        fontFamily: "Montserrat",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        marginBottom: "4px"
+      } }, "Facturado"), /* @__PURE__ */ React.createElement("p", { style: {
+        fontFamily: "JetBrains Mono",
+        fontSize: "13px",
+        fontWeight: 700,
+        color: "#26A69A"
+      } }, formatMoney2(d.x, true))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: {
+        fontSize: "9px",
+        color: "#64748b",
+        fontFamily: "Montserrat",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        marginBottom: "4px"
+      } }, "Saldo Acum."), /* @__PURE__ */ React.createElement("p", { style: {
+        fontFamily: "JetBrains Mono",
+        fontSize: "13px",
+        fontWeight: 700,
+        color: d.y >= 0 ? "#6B84F3" : "#FF8A65"
+      } }, formatMoney2(d.y, true)))), sinPagos && !liquidado && /* @__PURE__ */ React.createElement("div", { style: {
+        marginTop: "10px",
+        padding: "6px 10px",
+        background: "#FF8A6515",
+        borderRadius: "8px",
+        border: "1px solid #FF8A6530"
+      } }, /* @__PURE__ */ React.createElement("p", { style: {
+        fontSize: "10px",
+        color: "#FF8A65",
+        fontFamily: "Montserrat",
+        fontWeight: 700
+      } }, "\u26A0 Sin pagos aplicados")), liquidado && /* @__PURE__ */ React.createElement("div", { style: {
+        marginTop: "10px",
+        padding: "6px 10px",
+        background: "#26A69A15",
+        borderRadius: "8px",
+        border: "1px solid #26A69A30"
+      } }, /* @__PURE__ */ React.createElement("p", { style: {
+        fontSize: "10px",
+        color: "#26A69A",
+        fontFamily: "Montserrat",
+        fontWeight: 700
+      } }, "\u2713 Completamente liquidado")));
+    };
+    const CustomLegend = () => /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      justifyContent: "center",
+      gap: "24px",
+      marginTop: "16px",
+      paddingTop: "12px",
+      borderTop: "1px solid #f1f5f9"
+    } }, [
+      {
+        color: "#6B84F3",
+        label: "PUE",
+        count: scatterData2.PUE.length
+      },
+      {
+        color: "#785799",
+        label: "PPD",
+        count: scatterData2.PPD.length
+      },
+      {
+        color: "#CBD0DA",
+        label: "OTROS",
+        count: scatterData2.OTROS.length
+      }
+    ].map((item) => /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: item.label,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: "8px"
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { style: {
+        width: "10px",
+        height: "10px",
+        borderRadius: "50%",
+        background: item.color
+      } }),
+      /* @__PURE__ */ React.createElement("span", { style: {
+        fontFamily: "Montserrat",
+        fontSize: "12px",
+        color: "#64748b",
+        fontWeight: 500
+      } }, item.label),
+      /* @__PURE__ */ React.createElement("span", { style: {
+        fontFamily: "JetBrains Mono",
+        fontSize: "11px",
+        color: "#94a3b8"
+      } }, "(", item.count, ")")
+    )), /* @__PURE__ */ React.createElement("div", { style: {
+      width: "1px",
+      background: "#e2e8f0",
+      margin: "0 8px"
+    } }), /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px"
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: "20px",
+      height: "1px",
+      background: "#FF8A65",
+      borderTop: "1px dashed #FF8A65"
+    } }), /* @__PURE__ */ React.createElement("span", { style: {
+      fontFamily: "Montserrat",
+      fontSize: "11px",
+      color: "#FF8A65",
+      fontWeight: 500
+    } }, "Sin pagos (y=x)")), /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px"
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: "20px",
+      height: "1px",
+      borderTop: "1px dashed #26A69A"
+    } }), /* @__PURE__ */ React.createElement("span", { style: {
+      fontFamily: "Montserrat",
+      fontSize: "11px",
+      color: "#26A69A",
+      fontWeight: 500
+    } }, "Liquidaci\xF3n (y=0)")));
+    return /* @__PURE__ */ React.createElement("div", { style: { position: "relative", width: "100%", height: "100%" } }, /* @__PURE__ */ React.createElement(
+      ScatterChart,
+      {
+        margin: { top: 20, right: 40, left: 70, bottom: 20 }
+      },
+      /* @__PURE__ */ React.createElement(
+        CartesianGrid,
+        {
+          strokeDasharray: "3 3",
+          stroke: "#f1f5f9"
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        XAxis,
+        {
+          type: "number",
+          dataKey: "x",
+          name: "Facturado",
+          domain: [0, maxX],
+          tickFormatter: (v) => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}k`,
+          tick: {
+            fontSize: 10,
+            fontFamily: "Montserrat",
+            fill: "#94a3b8"
+          },
+          axisLine: false,
+          tickLine: false,
+          label: {
+            value: "Total Facturado",
+            position: "insideBottom",
+            offset: -8,
+            fontSize: 10,
+            fontFamily: "Montserrat",
+            fill: "#64748b"
+          }
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        YAxis,
+        {
+          type: "number",
+          dataKey: "y",
+          name: "Saldo",
+          domain: [minY, maxY],
+          tickFormatter: (v) => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}k`,
+          tick: {
+            fontSize: 10,
+            fontFamily: "Montserrat",
+            fill: "#94a3b8"
+          },
+          axisLine: false,
+          tickLine: false,
+          label: {
+            value: "Saldo Acumulado",
+            angle: -90,
+            position: "insideLeft",
+            offset: 10,
+            fontSize: 10,
+            fontFamily: "Montserrat",
+            fill: "#64748b"
+          }
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        ZAxis,
+        {
+          type: "number",
+          dataKey: "z",
+          range: [40, 400]
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        ReferenceLine,
+        {
+          segment: [
+            { x: 0, y: 0 },
+            { x: maxX, y: maxX }
+          ],
+          stroke: "#FF8A65",
+          strokeWidth: 1,
+          strokeDasharray: "6 4",
+          strokeOpacity: 0.5,
+          ifOverflow: "extendDomain"
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        ReferenceLine,
+        {
+          y: 0,
+          stroke: "#26A69A",
+          strokeWidth: 1.5,
+          strokeDasharray: "6 4",
+          strokeOpacity: 0.6,
+          label: {
+            value: "\u2190 Liquidaci\xF3n",
+            position: "insideLeft",
+            fontSize: 9,
+            fontFamily: "Montserrat",
+            fill: "#26A69A",
+            fontWeight: 700
+          }
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        Tooltip,
+        {
+          content: /* @__PURE__ */ React.createElement(CustomTooltipScatter2, null),
+          cursor: {
+            strokeDasharray: "3 3",
+            stroke: "#e2e8f0"
+          }
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        Scatter,
+        {
+          name: "PUE",
+          data: scatterData2.PUE,
+          fill: "#6B84F3",
+          fillOpacity: 0.75,
+          stroke: "white",
+          strokeWidth: 1.5
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        Scatter,
+        {
+          name: "PPD",
+          data: scatterData2.PPD,
+          fill: "#785799",
+          fillOpacity: 0.75,
+          stroke: "white",
+          strokeWidth: 1.5
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        Scatter,
+        {
+          name: "OTROS",
+          data: scatterData2.OTROS,
+          fill: "#CBD0DA",
+          fillOpacity: 0.75,
+          stroke: "white",
+          strokeWidth: 1.5
+        }
+      )
+    ), /* @__PURE__ */ React.createElement(CustomLegend, null));
+  };
+  const scatterData = {
+    PUE: registros.filter((r) => r.segmento === "PUE").map((r) => ({
+      x: r.conceptos?.["1. (+) Total Facturado"] || 0,
+      y: r.saldo_acumulado,
+      z: Math.max(30, Math.abs(r.saldo_acumulado)),
+      uuid: r.uuid,
+      segmento: r.segmento
+    })),
+    PPD: registros.filter((r) => r.segmento === "PPD").map((r) => ({
+      x: r.conceptos?.["1. (+) Total Facturado"] || 0,
+      y: r.saldo_acumulado,
+      z: Math.max(30, Math.abs(r.saldo_acumulado)),
+      uuid: r.uuid,
+      segmento: r.segmento
+    })),
+    OTROS: registros.filter((r) => r.segmento === "OTROS").map((r) => ({
+      x: r.conceptos?.["1. (+) Total Facturado"] || 0,
+      y: r.saldo_acumulado,
+      z: Math.max(30, Math.abs(r.saldo_acumulado)),
+      uuid: r.uuid,
+      segmento: r.segmento
+    }))
+  };
+  const maxFact = Math.max(...registros.map((r) => r.conceptos?.["1. (+) Total Facturado"] || 0), 0);
+  const calcularWaterfall = (registros2) => {
+    const totales = {
+      facturado: 0,
+      notas: 0,
+      devoluciones: 0,
+      anticipo: 0,
+      pagos: 0,
+      saldo: 0
+    };
+    registros2.forEach((r) => {
+      totales.facturado += r.conceptos?.["1. (+) Total Facturado"] || 0;
+      totales.notas += r.conceptos?.["2. (-) Notas de Cr\xE9dito (01)"] || 0;
+      totales.devoluciones += r.conceptos?.["4. (-) Devoluciones (03)"] || 0;
+      totales.anticipo += r.conceptos?.["7. (-) Anticipo (07)"] || 0;
+      totales.pagos += r.conceptos?.["8. (-) Pagos Aplicados (08/09)"] || 0;
+      totales.saldo += r.saldo_acumulado;
+    });
+    let acumulado = totales.facturado;
+    return [
+      {
+        name: "Total\nFacturado",
+        valor: totales.facturado,
+        base: 0,
+        color: "#26A69A",
+        tipo: "positivo"
+      },
+      {
+        name: "Notas de\nCr\xE9dito",
+        valor: Math.abs(totales.notas),
+        base: acumulado + totales.notas,
+        color: "#FF8A65",
+        tipo: "negativo",
+        _acum: acumulado += totales.notas
+      },
+      {
+        name: "Devoluciones",
+        valor: Math.abs(totales.devoluciones),
+        base: acumulado + totales.devoluciones,
+        color: "#FF8A65",
+        tipo: "negativo",
+        _acum: acumulado += totales.devoluciones
+      },
+      {
+        name: "Anticipo",
+        valor: Math.abs(totales.anticipo),
+        base: acumulado + totales.anticipo,
+        color: "#FFCA28",
+        tipo: "negativo",
+        _acum: acumulado += totales.anticipo
+      },
+      {
+        name: "Pagos\nAplicados",
+        valor: Math.abs(totales.pagos),
+        base: acumulado + totales.pagos,
+        color: "#FFCA28",
+        tipo: "negativo",
+        _acum: acumulado += totales.pagos
+      },
+      {
+        name: "Saldo\nNeto",
+        valor: Math.abs(totales.saldo),
+        base: 0,
+        color: totales.saldo >= 0 ? "#6B84F3" : "#ef4444",
+        tipo: "resultado"
+      }
+    ];
+  };
+  const waterfallData = calcularWaterfall(registros);
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: "40px" } }, /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "24px",
+    padding: "20px 24px",
+    background: "white",
+    borderRadius: "16px",
+    borderLeft: "4px solid #6B84F3",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
+  } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" } }, /* @__PURE__ */ React.createElement("span", { style: {
+    background: "#26A69A",
+    color: "white",
+    fontSize: "9px",
+    fontFamily: "Montserrat",
+    fontWeight: 800,
+    padding: "2px 8px",
+    borderRadius: "20px",
+    letterSpacing: "0.1em"
+  } }, "\u25CF LIVE"), /* @__PURE__ */ React.createElement("h2", { style: {
+    fontSize: "20px",
+    fontFamily: "Montserrat",
+    fontWeight: 800,
+    color: "#1e293b",
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    margin: 0
+  } }, "Explorador de Registros UUID")), /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "13px",
+    fontFamily: "Montserrat",
+    color: "#94a3b8",
+    fontWeight: 400,
+    margin: 0
+  } }, "Gesti\xF3n detallada de folios fiscales y auditor\xEDa documental \u2014 Per\xEDodo: ", /* @__PURE__ */ React.createElement("strong", { style: { color: "#6B84F3", textTransform: "capitalize" } }, nombreMes, " ", anio))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "12px", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: "10px",
+    padding: "8px 14px",
+    width: "260px"
+  } }, /* @__PURE__ */ React.createElement(Search, { size: 15, color: "#94a3b8" }), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      placeholder: "Buscar UUID, RFC...",
+      value: searchUUID,
+      onChange: (e) => setSearchUUID(e.target.value),
+      style: {
+        border: "none",
+        background: "transparent",
+        fontFamily: "Montserrat",
+        fontSize: "13px",
+        color: "#1e293b",
+        outline: "none",
+        width: "100%"
+      }
+    }
+  )), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleExportCSV,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        background: "#6B84F3",
+        color: "white",
+        border: "none",
+        borderRadius: "10px",
+        padding: "9px 18px",
+        cursor: "pointer",
+        fontFamily: "Montserrat",
+        fontSize: "13px",
+        fontWeight: 700
+      }
+    },
+    /* @__PURE__ */ React.createElement(Download, { size: 15 }),
+    "EXPORTAR"
+  ))), /* @__PURE__ */ React.createElement("div", { style: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "16px",
+    marginBottom: "24px"
+  } }, /* @__PURE__ */ React.createElement(
+    KPICard,
+    {
+      title: "Total UUIDs",
+      value: kpis.total_uuids.toLocaleString("es-MX"),
+      icon: FileText,
+      accentColor: "#6B84F3",
+      isLoading: loading
+    }
+  ), /* @__PURE__ */ React.createElement(
+    KPICard,
+    {
+      title: "Saldo Total",
+      value: formatMoney(kpis.saldo_total, true),
+      icon: DollarSign,
+      accentColor: "#26A69A",
+      isLoading: loading
+    }
+  ), /* @__PURE__ */ React.createElement(
+    KPICard,
+    {
+      title: "Promedio Op.",
+      value: formatMoney(kpis.promedio_saldo, true),
+      icon: Calculator,
+      accentColor: "#FF8A65",
+      isLoading: loading
+    }
+  ), /* @__PURE__ */ React.createElement(
+    KPICard,
+    {
+      title: "Ratio Emit/Recib",
+      value: `${kpis.ratio_emit_recib.toFixed(1)}%`,
+      icon: PieChartIcon,
+      accentColor: "#785799",
+      isLoading: loading
+    }
+  )), /* @__PURE__ */ React.createElement("div", { style: {
+    display: "grid",
+    gridTemplateColumns: "280px 1fr",
+    gap: "16px",
+    marginBottom: "16px"
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "white",
+    borderRadius: "16px",
+    padding: "20px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
+  } }, /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "14px",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    color: "#1e293b",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    margin: "0 0 20px 0"
+  } }, /* @__PURE__ */ React.createElement(Filter, { size: 15, color: "#6B84F3" }), "Filtros de Negocio"), /* @__PURE__ */ React.createElement("label", { style: {
+    display: "block",
+    fontSize: "10px",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    color: "#94a3b8",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  } }, "Segmento Operativo"), /* @__PURE__ */ React.createElement(
+    "select",
+    {
+      value: filtros.segmento || "",
+      onChange: (e) => setFiltros((p) => ({
+        ...p,
+        segmento: e.target.value || null,
+        page: 1
+      })),
+      style: {
+        width: "100%",
+        marginTop: "6px",
+        marginBottom: "16px",
+        padding: "9px 12px",
+        borderRadius: "8px",
+        border: "1px solid #e2e8f0",
+        fontFamily: "Montserrat",
+        fontSize: "13px",
+        color: "#1e293b",
+        background: "white",
+        cursor: "pointer",
+        outline: "none"
+      }
+    },
+    /* @__PURE__ */ React.createElement("option", { value: "" }, "Todos los Segmentos"),
+    /* @__PURE__ */ React.createElement("option", { value: "PUE" }, "PUE"),
+    /* @__PURE__ */ React.createElement("option", { value: "PPD" }, "PPD"),
+    /* @__PURE__ */ React.createElement("option", { value: "OTROS" }, "OTROS")
+  ), /* @__PURE__ */ React.createElement("label", { style: {
+    display: "block",
+    fontSize: "10px",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    color: "#94a3b8",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  } }, "Flujo de Caja"), /* @__PURE__ */ React.createElement(
+    "select",
+    {
+      value: filtros.flujo || "",
+      onChange: (e) => setFiltros((p) => ({
+        ...p,
+        flujo: e.target.value || null,
+        page: 1
+      })),
+      style: {
+        width: "100%",
+        marginTop: "6px",
+        marginBottom: "16px",
+        padding: "9px 12px",
+        borderRadius: "8px",
+        border: "1px solid #e2e8f0",
+        fontFamily: "Montserrat",
+        fontSize: "13px",
+        color: "#1e293b",
+        background: "white",
+        cursor: "pointer",
+        outline: "none"
+      }
+    },
+    /* @__PURE__ */ React.createElement("option", { value: "" }, "Todos"),
+    /* @__PURE__ */ React.createElement("option", { value: "EMITIDOS" }, "EMITIDOS"),
+    /* @__PURE__ */ React.createElement("option", { value: "RECIBIDOS" }, "RECIBIDOS")
+  ), /* @__PURE__ */ React.createElement("label", { style: {
+    display: "block",
+    fontSize: "10px",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    color: "#94a3b8",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  } }, "Rango de Saldo M\xEDnimo"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "range",
+      min: 0,
+      max: 5e5,
+      step: 1e3,
+      value: filtros.saldo_min || 0,
+      onChange: (e) => setFiltros((p) => ({
+        ...p,
+        saldo_min: Number(e.target.value) || null,
+        page: 1
+      })),
+      style: {
+        width: "100%",
+        marginTop: "8px",
+        accentColor: "#6B84F3"
+      }
+    }
+  ), /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "4px"
+  } }, /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: "10px",
+    color: "#94a3b8",
+    fontFamily: "Montserrat"
+  } }, "MIN: $", (filtros.saldo_min || 0).toLocaleString("es-MX")), /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: "10px",
+    color: "#94a3b8",
+    fontFamily: "Montserrat"
+  } }, "MAX: 500k+"))), /* @__PURE__ */ React.createElement(
+    ChartCard,
+    {
+      title: "WATERFALL \u2014 COMPOSICI\xD3N DEL SALDO AGREGADO",
+      borderColor: "#26A69A",
+      subtitle: "C\xF3mo llega del facturado al saldo neto"
+    },
+    /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 240 }, /* @__PURE__ */ React.createElement(
+      BarChart,
+      {
+        data: waterfallData,
+        margin: { top: 30, right: 20, left: 80, bottom: 20 }
+      },
+      /* @__PURE__ */ React.createElement(CartesianGrid, { vertical: false, strokeDasharray: "3 3", stroke: "#f1f5f9" }),
+      /* @__PURE__ */ React.createElement(
+        XAxis,
+        {
+          dataKey: "name",
+          tick: {
+            fontSize: 10,
+            fontFamily: "Montserrat",
+            fill: "#64748b",
+            whiteSpace: "pre-line"
+          },
+          axisLine: false,
+          tickLine: false
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        YAxis,
+        {
+          tickFormatter: (v) => `$${(Math.abs(v) / 1e6).toFixed(1)}M`,
+          tick: { fontSize: 10, fontFamily: "JetBrains Mono", fill: "#94a3b8" },
+          axisLine: false,
+          tickLine: false
+        }
+      ),
+      /* @__PURE__ */ React.createElement(
+        Tooltip,
+        {
+          formatter: (v, name, props) => {
+            if (name === "base") return null;
+            const d = props.payload;
+            return [
+              formatMoney(d.tipo === "negativo" ? -v : v),
+              d.name.replace("\n", " ")
+            ];
+          },
+          contentStyle: { fontFamily: "Montserrat", borderRadius: "10px" }
+        }
+      ),
+      /* @__PURE__ */ React.createElement(Bar, { dataKey: "base", stackId: "wf", fill: "transparent", legendType: "none" }),
+      /* @__PURE__ */ React.createElement(Bar, { dataKey: "valor", stackId: "wf", radius: [6, 6, 0, 0], maxBarSize: 60 }, waterfallData.map((entry, i) => /* @__PURE__ */ React.createElement(
+        Cell,
+        {
+          key: i,
+          fill: entry.color,
+          fillOpacity: entry.tipo === "negativo" ? 0.8 : entry.tipo === "resultado" ? 1 : 0.9
+        }
+      )), /* @__PURE__ */ React.createElement(
+        LabelList,
+        {
+          dataKey: "valor",
+          position: "top",
+          formatter: (v, i) => {
+            const entry = waterfallData[i];
+            if (!entry) return "";
+            const prefix = entry.tipo === "negativo" ? "-" : "";
+            return `${prefix}${formatMoney(v, true)}`;
+          },
+          style: {
+            fontSize: "10px",
+            fontFamily: "JetBrains Mono",
+            fontWeight: 700,
+            fill: "#475569"
+          }
+        }
+      ))
+    ))
+  )), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "16px" } }, /* @__PURE__ */ React.createElement(
+    ChartCard,
+    {
+      title: "FACTURADO VS SALDO \u2014 DETECCI\xD3N DE RIESGO",
+      borderColor: "#6B84F3",
+      subtitle: /* @__PURE__ */ React.createElement("span", { style: {
+        fontSize: "11px",
+        fontFamily: "Montserrat",
+        color: "#94a3b8"
+      } }, "Cada punto = 1 UUID \xA0\xB7\xA0 Tama\xF1o proporcional al saldo \xA0\xB7\xA0", /* @__PURE__ */ React.createElement("span", { style: { color: "#FF8A65" } }, "Diagonal = sin pagos aplicados"))
+    },
+    /* @__PURE__ */ React.createElement(ResponsiveContainer, { width: "100%", height: 320 }, /* @__PURE__ */ React.createElement(ScatterChart, { margin: { top: 20, right: 80, left: 70, bottom: 30 } }, /* @__PURE__ */ React.createElement(ScatterRiesgo, { scatterData, formatMoney })))
+  )), /* @__PURE__ */ React.createElement("div", { style: {
+    background: "white",
+    borderRadius: "16px",
+    overflow: "hidden",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "16px 24px",
+    borderBottom: "1px solid #f1f5f9"
+  } }, /* @__PURE__ */ React.createElement("p", { style: {
+    fontSize: "13px",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    color: "#1e293b",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    margin: 0
+  } }, /* @__PURE__ */ React.createElement(Activity, { size: 15, color: "#6B84F3" }), "Auditor\xEDa de Documentos Fiscales"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "16px" } }, /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: "12px",
+    color: "#94a3b8",
+    fontFamily: "Montserrat"
+  } }, total.toLocaleString("es-MX"), " registros encontrados"), /* @__PURE__ */ React.createElement(
+    "select",
+    {
+      value: filtros.limit,
+      onChange: (e) => setFiltros((p) => ({
+        ...p,
+        limit: Number(e.target.value),
+        page: 1
+      })),
+      style: {
+        padding: "6px 10px",
+        borderRadius: "8px",
+        border: "1px solid #e2e8f0",
+        fontFamily: "Montserrat",
+        fontSize: "12px",
+        color: "#1e293b",
+        cursor: "pointer",
+        outline: "none"
+      }
+    },
+    /* @__PURE__ */ React.createElement("option", { value: 25 }, "25 por p\xE1g."),
+    /* @__PURE__ */ React.createElement("option", { value: 50 }, "50 por p\xE1g."),
+    /* @__PURE__ */ React.createElement("option", { value: 100 }, "100 por p\xE1g.")
+  ))), /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "#f8fafc" } }, [
+    { label: "UUID", width: "220px" },
+    { label: "SEGMENTO", width: "90px" },
+    { label: "FLUJO", width: "90px" },
+    { label: "1. (+) TOTAL\nFACTURADO", width: "120px" },
+    { label: "2. (-) NOTAS DE\nCR\xC9DITO (01)", width: "120px" },
+    { label: "4. (-)\nDEVOLUCIONES (03)", width: "110px" },
+    { label: "7. (-)\nANTICIPO (07)", width: "100px" },
+    { label: "8. (-) PAGOS\nAPLICADOS (08/09)", width: "130px" },
+    { label: "9. (=) SALDO\nACUMULADO", width: "130px" }
+  ].map((col, i) => /* @__PURE__ */ React.createElement("th", { key: i, style: {
+    padding: "12px 16px",
+    textAlign: i <= 2 ? "left" : "right",
+    fontSize: "10px",
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    color: "#64748b",
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    whiteSpace: "pre-line",
+    lineHeight: 1.4,
+    borderBottom: "2px solid #e2e8f0",
+    width: col.width,
+    cursor: i > 2 ? "pointer" : "default"
+  } }, col.label)))), /* @__PURE__ */ React.createElement("tbody", null, loading ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 9, style: { padding: "40px", textAlign: "center", color: "#94a3b8", fontFamily: "Montserrat", fontSize: "12px" } }, "Cargando registros...")) : registros.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 9, style: { padding: "40px", textAlign: "center", color: "#94a3b8", fontFamily: "Montserrat", fontSize: "12px" } }, "No se encontraron registros.")) : registros.map((doc, i) => /* @__PURE__ */ React.createElement(
+    "tr",
+    {
+      key: doc.uuid,
+      style: {
+        borderBottom: "1px solid #f8fafc",
+        transition: "background 0.15s"
+      },
+      onMouseEnter: (e) => e.currentTarget.style.background = "#fafbff",
+      onMouseLeave: (e) => e.currentTarget.style.background = "white"
+    },
+    /* @__PURE__ */ React.createElement("td", { style: { padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px"
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: "7px",
+      height: "7px",
+      borderRadius: "50%",
+      flexShrink: 0,
+      background: doc.segmento === "PUE" ? "#6B84F3" : doc.segmento === "PPD" ? "#785799" : "#CBD0DA"
+    } }), /* @__PURE__ */ React.createElement("span", { style: {
+      fontFamily: "JetBrains Mono, monospace",
+      fontSize: "12px",
+      color: "#1e293b"
+    } }, doc.uuid))),
+    /* @__PURE__ */ React.createElement("td", { style: { padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("span", { style: {
+      padding: "3px 10px",
+      borderRadius: "6px",
+      fontSize: "11px",
+      fontFamily: "Montserrat",
+      fontWeight: 700,
+      background: doc.segmento === "PUE" ? "#6B84F315" : doc.segmento === "PPD" ? "#78579915" : "#CBD0DA30",
+      color: doc.segmento === "PUE" ? "#6B84F3" : doc.segmento === "PPD" ? "#785799" : "#94a3b8"
+    } }, doc.segmento)),
+    /* @__PURE__ */ React.createElement("td", { style: { padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("span", { style: {
+      fontSize: "11px",
+      fontFamily: "Montserrat",
+      fontWeight: 700,
+      color: doc.flujo === "EMITIDOS" ? "#6B84F3" : "#FF8A65",
+      letterSpacing: "0.04em"
+    } }, doc.flujo)),
+    [
+      doc.conceptos?.["1. (+) Total Facturado"] ?? 0,
+      doc.conceptos?.["2. (-) Notas de Cr\xE9dito (01)"] ?? 0,
+      doc.conceptos?.["4. (-) Devoluciones (03)"] ?? 0,
+      doc.conceptos?.["7. (-) Anticipo (07)"] ?? 0,
+      doc.conceptos?.["8. (-) Pagos Aplicados (08/09)"] ?? 0
+    ].map((val, j) => /* @__PURE__ */ React.createElement("td", { key: j, style: {
+      padding: "14px 16px",
+      textAlign: "right",
+      fontFamily: "JetBrains Mono, monospace",
+      fontSize: "13px",
+      color: val === 0 ? "#cbd5e1" : j === 0 ? "#26A69A" : j === 4 ? "#FF8A65" : "#ef4444",
+      fontWeight: val === 0 ? 400 : 600
+    } }, val === 0 ? "0.00" : formatMoney(val))),
+    /* @__PURE__ */ React.createElement("td", { style: {
+      padding: "14px 16px",
+      textAlign: "right",
+      fontFamily: "JetBrains Mono, monospace",
+      fontSize: "13px",
+      fontWeight: 700,
+      color: doc.saldo_acumulado > 0 ? "#26A69A" : doc.saldo_acumulado < 0 ? "#ef4444" : "#cbd5e1"
+    } }, formatMoney(doc.saldo_acumulado))
+  ))))), /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "16px 24px"
+  } }, /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: "12px",
+    color: "#94a3b8",
+    fontFamily: "Montserrat"
+  } }, "P\xE1gina ", filtros.page, " de ", Math.max(1, Math.ceil(total / filtros.limit))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px" } }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => setFiltros((p) => ({ ...p, page: Math.max(1, p.page - 1) })),
+      disabled: filtros.page === 1,
+      style: {
+        padding: "6px 14px",
+        borderRadius: "8px",
+        border: "1px solid #e2e8f0",
+        fontFamily: "Montserrat",
+        fontSize: "12px",
+        fontWeight: 600,
+        background: filtros.page === 1 ? "#f8fafc" : "white",
+        color: filtros.page === 1 ? "#cbd5e1" : "#1e293b",
+        cursor: filtros.page === 1 ? "not-allowed" : "pointer"
+      }
+    },
+    "\u2190 Anterior"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => setFiltros((p) => ({ ...p, page: p.page + 1 })),
+      disabled: filtros.page >= Math.ceil(total / filtros.limit),
+      style: {
+        padding: "6px 14px",
+        borderRadius: "8px",
+        border: filtros.page >= Math.ceil(total / filtros.limit) ? "1px solid #e2e8f0" : "none",
+        fontFamily: "Montserrat",
+        fontSize: "12px",
+        fontWeight: 600,
+        background: filtros.page >= Math.ceil(total / filtros.limit) ? "#f8fafc" : "#6B84F3",
+        color: filtros.page >= Math.ceil(total / filtros.limit) ? "#cbd5e1" : "white",
+        cursor: filtros.page >= Math.ceil(total / filtros.limit) ? "not-allowed" : "pointer"
+      }
+    },
+    "Siguiente \u2192"
+  )))));
+};
+export default DetalleUUIDView;

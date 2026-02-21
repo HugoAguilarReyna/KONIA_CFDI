@@ -1,0 +1,58 @@
+
+Running 2 tests using 2 workers
+
+[1A[2K[1/2] [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow
+[1A[2K[2/2] [chromium] ÔÇ║ e2e\dashboard.spec.js:7:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Login and KPI Verification
+[1A[2K  1) [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow ÔöÇÔöÇ
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[placeholder="ID Empresa"]')[22m
+
+
+      37 |         // Login first (quick login for this test isolation)
+      38 |         await page.goto('/');
+    > 39 |         await page.fill('input[placeholder="ID Empresa"]', 'TENANT_001');
+         |                    ^
+      40 |         await page.fill('input[placeholder="Usuario"]', 'admin');
+      41 |         await page.fill('input[placeholder="Contrase├▒a"]', 'admin123');
+      42 |         await page.click('button:has-text("Iniciar Sesi├│n")');
+        at D:\antigravity\Dashboard_Leopoldo\pm_dashb-main\konia-react-migration\frontend\e2e\dashboard.spec.js:39:20
+
+    attachment #1: screenshot (image/png) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    test-results\dashboard-Konia-Dashboard-E2E-Traceability-Navigation-Flow-chromium\test-failed-1.png
+    ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    Error Context: test-results\dashboard-Konia-Dashboard-E2E-Traceability-Navigation-Flow-chromium\error-context.md
+
+
+[1A[2K  2) [chromium] ÔÇ║ e2e\dashboard.spec.js:7:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Login and KPI Verification ÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[placeholder="ID Empresa"]')[22m
+
+
+      11 |
+      12 |         // 2. Perform Login
+    > 13 |         await page.fill('input[placeholder="ID Empresa"]', 'TENANT_001');
+         |                    ^
+      14 |         await page.fill('input[placeholder="Usuario"]', 'admin');
+      15 |         await page.fill('input[placeholder="Contrase├▒a"]', 'admin123');
+      16 |         await page.click('button:has-text("Iniciar Sesi├│n")');
+        at D:\antigravity\Dashboard_Leopoldo\pm_dashb-main\konia-react-migration\frontend\e2e\dashboard.spec.js:13:20
+
+    attachment #1: screenshot (image/png) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    test-results\dashboard-Konia-Dashboard-E2E-Login-and-KPI-Verification-chromium\test-failed-1.png
+    ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+    Error Context: test-results\dashboard-Konia-Dashboard-E2E-Login-and-KPI-Verification-chromium\error-context.md
+
+
+[1A[2K  2 failed
+    [chromium] ÔÇ║ e2e\dashboard.spec.js:7:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Login and KPI Verification ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    [chromium] ÔÇ║ e2e\dashboard.spec.js:36:5 ÔÇ║ Konia Dashboard E2E ÔÇ║ Traceability Navigation Flow ÔöÇÔöÇÔöÇ

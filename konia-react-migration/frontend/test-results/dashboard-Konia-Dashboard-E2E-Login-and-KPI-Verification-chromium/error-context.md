@@ -1,0 +1,248 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation [ref=e4]:
+      - generic [ref=e6]: KONIA
+      - generic [ref=e7]:
+        - link "Cuenta T" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Materialidad / REPSE" [ref=e9] [cursor=pointer]:
+          - /url: /materialidad
+        - link "Riesgos" [ref=e10] [cursor=pointer]:
+          - /url: /riesgos
+        - link "Compliance" [ref=e11] [cursor=pointer]:
+          - /url: /compliance
+        - link "Configuración" [ref=e12] [cursor=pointer]:
+          - /url: /configuracion
+    - generic [ref=e13]:
+      - complementary [ref=e14]:
+        - generic [ref=e15]:
+          - button "FILTROS" [ref=e16] [cursor=pointer]:
+            - generic [ref=e22]: FILTROS
+          - generic [ref=e24]:
+            - generic [ref=e25]: FILTROS
+            - generic [ref=e26]:
+              - generic [ref=e27]:
+                - text: TIPO COMPROBANTE
+                - generic [ref=e28]:
+                  - button "Egreso" [ref=e29] [cursor=pointer]
+                  - button "Ingreso" [ref=e30] [cursor=pointer]
+                  - button "Nómina" [ref=e31] [cursor=pointer]
+                  - button "Pago" [ref=e32] [cursor=pointer]
+              - generic [ref=e33]:
+                - text: MÉTODO DE PAGO
+                - generic [ref=e34]:
+                  - generic [ref=e35]:
+                    - button "Otros" [ref=e36] [cursor=pointer]
+                    - button "PPD (Pago Diferido)" [ref=e37] [cursor=pointer]
+                  - button "PUE (Pago Una Exhib.)" [ref=e39] [cursor=pointer]
+              - generic [ref=e40]:
+                - text: AGRUPACIÓN TEMPORAL
+                - generic [ref=e41]:
+                  - generic [ref=e42] [cursor=pointer]:
+                    - radio "Diario" [ref=e43]
+                    - generic [ref=e44]: Diario
+                  - generic [ref=e45] [cursor=pointer]:
+                    - radio "Semanal" [ref=e46]
+                    - generic [ref=e47]: Semanal
+                  - generic [ref=e48] [cursor=pointer]:
+                    - radio "Mensual" [ref=e49]
+                    - generic [ref=e50]: Mensual
+              - generic [ref=e51]:
+                - generic [ref=e52]:
+                  - generic [ref=e53]: Período Fiscal
+                  - text: MODO
+                  - generic [ref=e54]:
+                    - generic [ref=e55] [cursor=pointer]:
+                      - radio "Mes Único" [ref=e56]
+                      - generic [ref=e57]: Mes Único
+                    - generic [ref=e58] [cursor=pointer]:
+                      - radio "Rango de Meses" [ref=e59]
+                      - generic [ref=e60]: Rango de Meses
+                - generic [ref=e61]:
+                  - generic [ref=e62]:
+                    - generic [ref=e63]: Año
+                    - generic [ref=e64]:
+                      - combobox [ref=e65]:
+                        - option "2026" [selected]
+                        - option "2025"
+                        - option "2024"
+                        - option "2023"
+                      - img
+                  - generic [ref=e66]:
+                    - generic [ref=e67]: Mes
+                    - generic [ref=e68]:
+                      - combobox [ref=e69]:
+                        - option "Enero"
+                        - option "Febrero" [selected]
+                        - option "Marzo"
+                        - option "Abril"
+                        - option "Mayo"
+                        - option "Junio"
+                        - option "Julio"
+                        - option "Agosto"
+                        - option "Septiembre"
+                        - option "Octubre"
+                        - option "Noviembre"
+                        - option "Diciembre"
+                      - img
+                - generic [ref=e70]:
+                  - generic [ref=e71]: ✓
+                  - generic [ref=e72]: "Período: Febrero 2026"
+            - paragraph [ref=e74]:
+              - text: INTELIGENCIA FORENSE
+              - text: v2.0.1
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - link "Matriz Resumen" [ref=e78] [cursor=pointer]:
+            - /url: /
+          - link "Detalle UUID" [ref=e79] [cursor=pointer]:
+            - /url: /detalle-uuid
+          - link "Trazabilidad UUID" [ref=e80] [cursor=pointer]:
+            - /url: /trazabilidad
+          - link "Analítica" [ref=e81] [cursor=pointer]:
+            - /url: /analitica
+          - link "Prellenado" [ref=e82] [cursor=pointer]:
+            - /url: /prellenado
+          - link "Análisis Estructural" [ref=e83] [cursor=pointer]:
+            - /url: /analisis-estructural
+          - link "Tendencias" [ref=e84] [cursor=pointer]:
+            - /url: /tendencias
+        - main [ref=e85]:
+          - generic [ref=e87]:
+            - heading "MATRIZ FISCAL RESUMEN (PREMIUM)" [level=1] [ref=e89]
+            - generic [ref=e91]:
+              - generic [ref=e92]:
+                - img [ref=e94]
+                - generic [ref=e97]:
+                  - heading "Total Ingresos" [level=3] [ref=e98]
+                  - img [ref=e100]
+                - generic [ref=e103]:
+                  - generic [ref=e104]: $0
+                  - generic [ref=e105]:
+                    - img [ref=e106]
+                    - generic [ref=e109]: 12%
+                    - generic [ref=e110]: vs mes ant.
+              - generic [ref=e111]:
+                - img [ref=e113]
+                - generic [ref=e116]:
+                  - heading "Total Egresos" [level=3] [ref=e117]
+                  - img [ref=e119]
+                - generic [ref=e122]:
+                  - generic [ref=e123]: $0
+                  - generic [ref=e124]:
+                    - img [ref=e125]
+                    - generic [ref=e128]: 5%
+                    - generic [ref=e129]: vs mes ant.
+              - generic [ref=e130]:
+                - img [ref=e132]
+                - generic [ref=e134]:
+                  - heading "Neto (Utilidad)" [level=3] [ref=e135]
+                  - img [ref=e137]
+                - generic [ref=e139]:
+                  - generic [ref=e140]: $0
+                  - generic [ref=e141]:
+                    - img [ref=e142]
+                    - generic [ref=e143]: 0%
+                    - generic [ref=e144]: vs mes ant.
+              - generic [ref=e145]:
+                - img [ref=e147]
+                - generic [ref=e149]:
+                  - heading "Total CFDI" [level=3] [ref=e150]
+                  - img [ref=e152]
+                - generic [ref=e155]: "0"
+              - generic [ref=e156]:
+                - img [ref=e158]
+                - generic [ref=e161]:
+                  - heading "Método PUE/PPD" [level=3] [ref=e162]
+                  - img [ref=e164]
+                - generic [ref=e168]: 0% / 0%
+              - generic [ref=e169]:
+                - img [ref=e171]
+                - generic [ref=e173]:
+                  - heading "Créditos Fiscales" [level=3] [ref=e174]
+                  - img [ref=e176]
+                - generic [ref=e179]: $0.00
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - heading "MÉTODOS DE PAGO (PUE vs PPD)" [level=3] [ref=e182]
+                - generic [ref=e187]:
+                  - img
+                  - img
+                  - img
+              - generic [ref=e188]:
+                - heading "EVOLUCIÓN DE INGRESOS VS EGRESOS" [level=3] [ref=e189]
+                - generic [ref=e194]:
+                  - img:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: −1
+                          - generic:
+                            - generic: "0"
+                          - generic:
+                            - generic: "1"
+                          - generic:
+                            - generic: "2"
+                          - generic:
+                            - generic: "3"
+                          - generic:
+                            - generic: "4"
+                          - generic:
+                            - generic: "5"
+                          - generic:
+                            - generic: "6"
+                        - generic:
+                          - generic:
+                            - generic: −1
+                          - generic:
+                            - generic: "0"
+                          - generic:
+                            - generic: "1"
+                          - generic:
+                            - generic: "2"
+                          - generic:
+                            - generic: "3"
+                          - generic:
+                            - generic: "4"
+                  - img
+                  - img
+            - generic [ref=e208]:
+              - generic [ref=e209]:
+                - heading "TOP CLIENTES (INGRESOS)" [level=3] [ref=e210]:
+                  - img [ref=e211]
+                  - text: TOP CLIENTES (INGRESOS)
+                - generic [ref=e217]: No hay datos disponibles
+              - generic [ref=e218]:
+                - heading "TOP PROVEEDORES (EGRESOS)" [level=3] [ref=e219]:
+                  - img [ref=e220]
+                  - text: TOP PROVEEDORES (EGRESOS)
+                - generic [ref=e224]: No hay datos disponibles
+            - generic [ref=e225]:
+              - heading "MATRIZ FINANCIERA DETALLADA" [level=2] [ref=e227]
+              - generic [ref=e228]:
+                - generic [ref=e230]:
+                  - generic [ref=e231] [cursor=pointer]:
+                    - text: UUID
+                    - img [ref=e233]
+                  - generic [ref=e236] [cursor=pointer]:
+                    - text: FECHA
+                    - img [ref=e238]
+                  - generic [ref=e241] [cursor=pointer]:
+                    - text: RFC EMISOR
+                    - img [ref=e243]
+                  - generic [ref=e246] [cursor=pointer]:
+                    - text: RFC RECEPTOR
+                    - img [ref=e248]
+                  - generic [ref=e251] [cursor=pointer]:
+                    - text: TIPO
+                    - img [ref=e253]
+                  - generic [ref=e256] [cursor=pointer]:
+                    - text: TOTAL
+                    - img [ref=e258]
+                - generic [ref=e262]: No hay datos para mostrar
+  - img [ref=e263]
+```
