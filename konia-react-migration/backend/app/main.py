@@ -23,21 +23,30 @@ import os
 import json
 
 # CORS Configuration
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://konia-dashboard.onrender.com",
+    "https://konia-dashboard-v2.onrender.com", # Por si se renombra
+]
+
 origins_env = os.getenv("BACKEND_CORS_ORIGINS")
 if origins_env:
     try:
         # Intenta parsear si viene como JSON list ["url1", "url2"]
-        origins = json.loads(origins_env.replace("'", '"'))
+        ext_origins = json.loads(origins_env.replace("'", '"'))
+        if isinstance(ext_origins, list):
+            origins.extend(ext_origins)
+        else:
+            origins.append(ext_origins)
     except Exception:
-        # Si falla, asume que es una sola URL o lista separada por comas
-        origins = [o.strip() for o in origins_env.split(",")]
-else:
-    origins = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ]
+        # Si falla, asume que es una lista separada por comas
+        ext_origins = [o.strip() for o in origins_env.split(",")]
+        origins.extend(ext_origins)
+
+# Eliminar duplicados y limpiar
+origins = list(set([o.rstrip('/') for o in origins if o]))
+print(f"INFO: CORS Origins configured: {origins}")
 
 app.add_middleware(
     CORSMiddleware,

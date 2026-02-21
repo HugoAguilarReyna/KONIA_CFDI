@@ -28,10 +28,18 @@ export const AuthProvider = ({ children }) => {
             setUser(data.user);
             return { success: true };
         } catch (error) {
-            return {
-                success: false,
-                message: error.response?.data?.detail || 'Login failed'
-            };
+            console.error('Login error detail:', error);
+            let message = 'Login failed';
+
+            if (!error.response) {
+                message = 'Network Error: Backend unreachable. Check API URL or CORS.';
+            } else if (error.response.status === 401) {
+                message = error.response.data?.detail || 'Invalid credentials';
+            } else {
+                message = `Server Error (${error.response.status}): ${error.response.data?.detail || 'Unknown error'}`;
+            }
+
+            return { success: false, message };
         }
     };
 
