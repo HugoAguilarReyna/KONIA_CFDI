@@ -19,13 +19,25 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+import os
+import json
+
 # CORS Configuration
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-]
+origins_env = os.getenv("BACKEND_CORS_ORIGINS")
+if origins_env:
+    try:
+        # Intenta parsear si viene como JSON list ["url1", "url2"]
+        origins = json.loads(origins_env.replace("'", '"'))
+    except Exception:
+        # Si falla, asume que es una sola URL o lista separada por comas
+        origins = [o.strip() for o in origins_env.split(",")]
+else:
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
