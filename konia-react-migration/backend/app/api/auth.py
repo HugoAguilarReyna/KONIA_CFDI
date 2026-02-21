@@ -99,8 +99,8 @@ async def login_for_access_token(response: Response, form_data: LoginRequest):
         value=refresh_token,
         httponly=True,
         max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
-        secure=False 
+        samesite="none",
+        secure=True 
     )
     
     return {"message": "Login successful", "user": {
