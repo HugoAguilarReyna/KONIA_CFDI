@@ -1,0 +1,112 @@
+{
+  "periodo": "2026-02",
+  "bloque1_cartera_ppd": {
+    "aging_buckets": {},
+    "sin_rep_count": 0,
+    "sin_rep_monto": 0,
+    "dso_promedio_dias": 0,
+    "tasa_recuperacion": 0.0,
+    "total_ppd": 2477,
+    "total_con_rep": 0
+  },
+  "bloque2_eficiencia": {
+    "nc_excesivas_count": 0,
+    "ratio_nc_pct": 0,
+    "anticipos_pendientes": {
+      "count": 0,
+      "monto": 0
+    },
+    "otros_sin_clasificar": {
+      "count": 0,
+      "monto": 0
+    }
+  },
+  "bloque3_riesgo_sat": {
+    "top5_rfc": [],
+    "concentracion_pct": 0.0,
+    "ppd_criticos_count": 0,
+    "ppd_criticos_monto": 0
+  },
+  "bloque4_inteligencia": {
+    "top10_negativos": [
+      {
+        "uuid": "289B66F9-5FA3-4BCE-87CC-8CCC8FBF5052",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -6936939.2
+      },
+      {
+        "uuid": "333AACCE-38FD-43BF-A963-97DC2631C616",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -2600230.4
+      },
+      {
+        "uuid": "1aa86fb5-fbd4-48f1-afe3-8c2dca0717c0",
+        "segmento": "PPD",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1858765.44
+      },
+      {
+        "uuid": "25b5aba4-5138-4b78-88d3-bac9ccbaa10b",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -1747182.18
+      },
+      {
+        "uuid": "dc5764c1-8bea-4529-b689-4dd4a6b5296a",
+        "segmento": "PPD",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1436726.53
+      },
+      {
+        "uuid": "80d5f16e-8b8d-43dc-9ba5-b5f569336258",
+        "segmento": "PPD",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1433814.41
+      },
+      {
+        "uuid": "a6208d6b-dcaf-457c-ab78-d1f6dffe681d",
+        "segmento": "PPD",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1129021.46
+      },
+      {
+        "uuid": "7299f95e-b9f3-4a9c-9e99-9971d420d3cc",
+        "segmento": "PUE",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1056000.04
+      },
+      {
+        "uuid": "aa57779f-1a5e-4e85-a24b-3a528d72c2c3",
+        "segmento": "PPD",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1056000.04
+      },
+      {
+        "uuid": "42ff23f3-32c9-43a3-82d5-f1521e635cbe",
+        "segmento": "PPD",
+        "flujo": "RECIBIDOS",
+        "saldo_acumulado": -1042565.43
+      }
+    ],
+    "cadenas_largas": [
+      {
+        "_id": "78096ec9-dd9d-4d39-bf40-cb75a92c6c2f",
+        "eventos": 4
+      }
+    ],
+    "dist_flujo": [
+      {
+        "_id": "RECIBIDOS",
+        "count": 2360,
+        "monto": 131487667.31
+      },
+      {
+        "_id": "EMITIDOS",
+        "count": 1028,
+        "monto": -67755322.27
+      }
+    ]
+  }
+}

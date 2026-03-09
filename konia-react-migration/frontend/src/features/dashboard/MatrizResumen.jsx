@@ -55,7 +55,13 @@ const MatrizResumen = () => {
                 const periodo = `${filters.year}-${String(filters.month).padStart(2, '0')}`;
 
                 const [resMatriz, resTabla] = await Promise.all([
-                    dashboardService.getMatrizResumen({ periodo }),
+                    dashboardService.getMatrizResumen({
+                        periodo,
+                        tipo: filters.tipo,
+                        metodo: filters.metodo,
+                        monto_min: filters.monto_min,
+                        monto_max: filters.monto_max
+                    }),
                     dashboardService.getMatrizTabla(periodo)
                 ]);
 
@@ -73,7 +79,7 @@ const MatrizResumen = () => {
         if (filters.year && filters.month) {
             fetchData();
         }
-    }, [filters.year, filters.month]);
+    }, [filters.year, filters.month, filters.tipo, filters.metodo, filters.monto_min, filters.monto_max]);
 
     const handleCopyTable = () => {
         const table = document.getElementById('matriz-table');

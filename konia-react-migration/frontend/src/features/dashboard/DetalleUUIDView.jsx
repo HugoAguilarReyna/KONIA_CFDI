@@ -55,9 +55,6 @@ const DetalleUUIDView = () => {
     };
 
     const [filtros, setFiltros] = useState({
-        segmento: null,
-        flujo: null,
-        saldo_min: 0,
         page: 1,
         limit: 25
     });
@@ -69,14 +66,11 @@ const DetalleUUIDView = () => {
         setSearchUUID('');
         setFiltros({
             ...filtros,
-            segmento: null,
-            flujo: null,
-            saldo_min: 0,
             page: 1
         });
     };
 
-    const hasFilters = searchUUID !== '' || filtros.segmento !== null || filtros.flujo !== null || filtros.saldo_min > 0;
+    const hasFilters = searchUUID !== '';
 
     useEffect(() => {
         const fetchData = async () => {
@@ -91,12 +85,7 @@ const DetalleUUIDView = () => {
                     periodo,
                     filtros.page,
                     filtros.limit,
-                    {
-                        flujo: filtros.flujo,
-                        segmento: filtros.segmento,
-                        saldo_min: filtros.saldo_min,
-                        uuid_search: searchUUID
-                    }
+                    { uuid_search: searchUUID }
                 );
 
                 setData({
@@ -118,11 +107,13 @@ const DetalleUUIDView = () => {
         }, 300);
 
         return () => clearTimeout(debounceTimeout);
-    }, [filters.year, filters.month, filtros, searchUUID]);
+    }, [filters.year, filters.month, filtros, searchUUID, filters.monto_min, filters.monto_max, filters.tipo, filters.metodo]);
 
     const formatMoney = (amount, compact = false) => {
-        if (compact && amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
-        if (compact && amount >= 1000) return `$${(amount / 1000).toFixed(1)}k`;
+        const absAmount = Math.abs(amount);
+        const sign = amount < 0 ? '-' : '';
+        if (compact && absAmount >= 1000000) return `${sign}$${(absAmount / 1000000).toFixed(1)}M`;
+        if (compact && absAmount >= 1000) return `${sign}$${(absAmount / 1000).toFixed(1)}k`;
         return new Intl.NumberFormat('es-MX', {
             style: 'currency',
             currency: 'MXN',
@@ -133,6 +124,8 @@ const DetalleUUIDView = () => {
     const handleExportCSV = () => {
         const headers = [
             "UUID", "SEGMENTO", "FLUJO",
+            "NOMBRE EMISOR", "RFC EMISOR",
+            "NOMBRE RECEPTOR", "RFC RECEPTOR",
             "1. (+) Total Facturado",
             "2. (-) Notas de Crédito (01)",
             "4. (-) Devoluciones (03)",
@@ -144,6 +137,10 @@ const DetalleUUIDView = () => {
             doc.uuid,
             doc.segmento,
             doc.flujo,
+            doc.nombre_emisor || "",
+            doc.rfc_emisor || "",
+            doc.nombre_receptor || "",
+            doc.rfc_receptor || "",
             doc.conceptos?.["1. (+) Total Facturado"] ?? 0,
             doc.conceptos?.["2. (-) Notas de Crédito (01)"] ?? 0,
             doc.conceptos?.["4. (-) Devoluciones (03)"] ?? 0,
@@ -854,119 +851,13 @@ const DetalleUUIDView = () => {
                 />
             </div>
 
-            {/* Fila 1: Filtros (izquierda) + Waterfall (derecha) */}
+            {/* Fila 1: Waterfall (derecha) */}
             <div style={{
                 display: "grid",
-                gridTemplateColumns: "280px 1fr",
+                gridTemplateColumns: "1fr",
                 gap: "16px",
                 marginBottom: "16px"
             }}>
-                {/* Panel filtros */}
-                <div style={{
-                    background: "white",
-                    borderRadius: "16px",
-                    padding: "20px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
-                }}>
-                    <p style={{
-                        fontSize: "14px", fontFamily: "Montserrat",
-                        fontWeight: 700, color: "#1e293b",
-                        display: "flex", alignItems: "center", gap: "8px",
-                        margin: "0 0 20px 0"
-                    }}>
-                        <Filter size={15} color="#6B84F3" />
-                        Filtros de Negocio
-                    </p>
-
-                    <label style={{
-                        display: "block", fontSize: "10px", fontFamily: "Montserrat",
-                        fontWeight: 700, color: "#94a3b8",
-                        letterSpacing: "0.08em", textTransform: "uppercase"
-                    }}>
-                        Segmento Operativo
-                    </label>
-                    <select
-                        value={filtros.segmento || ""}
-                        onChange={e => setFiltros(p => ({
-                            ...p, segmento: e.target.value || null, page: 1
-                        }))}
-                        style={{
-                            width: "100%", marginTop: "6px", marginBottom: "16px",
-                            padding: "9px 12px", borderRadius: "8px",
-                            border: "1px solid #e2e8f0",
-                            fontFamily: "Montserrat", fontSize: "13px",
-                            color: "#1e293b", background: "white", cursor: "pointer",
-                            outline: "none"
-                        }}
-                    >
-                        <option value="">Todos los Segmentos</option>
-                        <option value="PUE">PUE</option>
-                        <option value="PPD">PPD</option>
-                        <option value="OTROS">OTROS</option>
-                    </select>
-
-                    <label style={{
-                        display: "block", fontSize: "10px", fontFamily: "Montserrat",
-                        fontWeight: 700, color: "#94a3b8",
-                        letterSpacing: "0.08em", textTransform: "uppercase"
-                    }}>
-                        Flujo de Caja
-                    </label>
-                    <select
-                        value={filtros.flujo || ""}
-                        onChange={e => setFiltros(p => ({
-                            ...p, flujo: e.target.value || null, page: 1
-                        }))}
-                        style={{
-                            width: "100%", marginTop: "6px", marginBottom: "16px",
-                            padding: "9px 12px", borderRadius: "8px",
-                            border: "1px solid #e2e8f0",
-                            fontFamily: "Montserrat", fontSize: "13px",
-                            color: "#1e293b", background: "white", cursor: "pointer",
-                            outline: "none"
-                        }}
-                    >
-                        <option value="">Todos</option>
-                        <option value="EMITIDOS">EMITIDOS</option>
-                        <option value="RECIBIDOS">RECIBIDOS</option>
-                    </select>
-
-                    <label style={{
-                        display: "block", fontSize: "10px", fontFamily: "Montserrat",
-                        fontWeight: 700, color: "#94a3b8",
-                        letterSpacing: "0.08em", textTransform: "uppercase"
-                    }}>
-                        Rango de Saldo Mínimo
-                    </label>
-                    <input
-                        type="range" min={0} max={500000} step={1000}
-                        value={filtros.saldo_min || 0}
-                        onChange={e => setFiltros(p => ({
-                            ...p, saldo_min: Number(e.target.value) || null, page: 1
-                        }))}
-                        style={{
-                            width: "100%", marginTop: "8px",
-                            accentColor: "#6B84F3"
-                        }}
-                    />
-                    <div style={{
-                        display: "flex", justifyContent: "space-between",
-                        marginTop: "4px"
-                    }}>
-                        <span style={{
-                            fontSize: "10px", color: "#94a3b8",
-                            fontFamily: "Montserrat"
-                        }}>
-                            MIN: ${(filtros.saldo_min || 0).toLocaleString("es-MX")}
-                        </span>
-                        <span style={{
-                            fontSize: "10px", color: "#94a3b8",
-                            fontFamily: "Montserrat"
-                        }}>
-                            MAX: 500k+
-                        </span>
-                    </div>
-                </div>
 
                 {/* Waterfall */}
                 <ChartCard
@@ -1112,24 +1003,28 @@ const DetalleUUIDView = () => {
                     </div>
                 </div>
 
-                <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={{ width: "100%", minWidth: "1600px", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ background: "#f8fafc" }}>
                                 {[
-                                    { label: "UUID", width: "220px" },
-                                    { label: "SEGMENTO", width: "90px" },
-                                    { label: "FLUJO", width: "90px" },
-                                    { label: "1. (+) TOTAL\nFACTURADO", width: "120px" },
-                                    { label: "2. (-) NOTAS DE\nCRÉDITO (01)", width: "120px" },
-                                    { label: "4. (-)\nDEVOLUCIONES (03)", width: "110px" },
-                                    { label: "7. (-)\nANTICIPO (07)", width: "100px" },
-                                    { label: "8. (-) PAGOS\nAPLICADOS (08/09)", width: "130px" },
-                                    { label: "9. (=) SALDO\nACUMULADO", width: "130px" }
+                                    { label: "UUID", width: "240px" },
+                                    { label: "SEGMENTO", width: "100px" },
+                                    { label: "FLUJO", width: "100px" },
+                                    { label: "NOMBRE\nEMISOR", width: "200px" },
+                                    { label: "RFC\nEMISOR", width: "145px" },
+                                    { label: "NOMBRE\nRECEPTOR", width: "200px" },
+                                    { label: "RFC\nRECEPTOR", width: "145px" },
+                                    { label: "1. (+) TOTAL\nFACTURADO", width: "145px" },
+                                    { label: "2. (-) NOTAS DE\nCRÉDITO (01)", width: "145px" },
+                                    { label: "4. (-)\nDEVOLUCIONES (03)", width: "135px" },
+                                    { label: "7. (-)\nANTICIPO (07)", width: "130px" },
+                                    { label: "8. (-) PAGOS\nAPLICADOS (08/09)", width: "145px" },
+                                    { label: "9. (=) SALDO\nACUMULADO", width: "145px" }
                                 ].map((col, i) => (
                                     <th key={i} style={{
                                         padding: "12px 16px",
-                                        textAlign: i <= 2 ? "left" : "right",
+                                        textAlign: i <= 2 ? "left" : (i >= 3 && i <= 6 ? "left" : "right"),
                                         fontSize: "10px",
                                         fontFamily: "Montserrat",
                                         fontWeight: 700,
@@ -1139,8 +1034,9 @@ const DetalleUUIDView = () => {
                                         whiteSpace: "pre-line",
                                         lineHeight: 1.4,
                                         borderBottom: "2px solid #e2e8f0",
+                                        minWidth: col.width,
                                         width: col.width,
-                                        cursor: i > 2 ? "pointer" : "default"
+                                        cursor: i > 6 ? "pointer" : "default"
                                     }}>
                                         {col.label}
                                     </th>
@@ -1150,13 +1046,13 @@ const DetalleUUIDView = () => {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#94a3b8", fontFamily: "Montserrat", fontSize: "12px" }}>
+                                    <td colSpan={13} style={{ padding: "40px", textAlign: "center", color: "#94a3b8", fontFamily: "Montserrat", fontSize: "12px" }}>
                                         Cargando registros...
                                     </td>
                                 </tr>
                             ) : registros.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#94a3b8", fontFamily: "Montserrat", fontSize: "12px" }}>
+                                    <td colSpan={13} style={{ padding: "40px", textAlign: "center", color: "#94a3b8", fontFamily: "Montserrat", fontSize: "12px" }}>
                                         No se encontraron registros.
                                     </td>
                                 </tr>
@@ -1229,6 +1125,34 @@ const DetalleUUIDView = () => {
                                         </span>
                                     </td>
 
+                                    {/* Nombre Emisor */}
+                                    <td style={{ padding: "14px 16px", minWidth: "200px" }}>
+                                        <span style={{ fontFamily: "Montserrat", fontSize: "12px", color: "#334155", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }} title={doc.nombre_emisor || '—'}>
+                                            {doc.nombre_emisor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                        </span>
+                                    </td>
+
+                                    {/* RFC Emisor */}
+                                    <td style={{ padding: "14px 16px", minWidth: "145px" }}>
+                                        <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "12px", color: "#5b6af0", letterSpacing: "0.03em", fontWeight: 600 }}>
+                                            {doc.rfc_emisor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                        </span>
+                                    </td>
+
+                                    {/* Nombre Receptor */}
+                                    <td style={{ padding: "14px 16px", minWidth: "200px" }}>
+                                        <span style={{ fontFamily: "Montserrat", fontSize: "12px", color: "#334155", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }} title={doc.nombre_receptor || '—'}>
+                                            {doc.nombre_receptor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                        </span>
+                                    </td>
+
+                                    {/* RFC Receptor */}
+                                    <td style={{ padding: "14px 16px", minWidth: "145px" }}>
+                                        <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "12px", color: "#0d9488", letterSpacing: "0.03em", fontWeight: 600 }}>
+                                            {doc.rfc_receptor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                        </span>
+                                    </td>
+
                                     {[
                                         doc.conceptos?.["1. (+) Total Facturado"] ?? 0,
                                         doc.conceptos?.["2. (-) Notas de Crédito (01)"] ?? 0,
@@ -1241,6 +1165,7 @@ const DetalleUUIDView = () => {
                                             textAlign: "right",
                                             fontFamily: "JetBrains Mono, monospace",
                                             fontSize: "13px",
+                                            minWidth: "135px",
                                             color: val === 0 ? "#cbd5e1" :
                                                 j === 0 ? "#26A69A" :
                                                     j === 4 ? "#FF8A65" :

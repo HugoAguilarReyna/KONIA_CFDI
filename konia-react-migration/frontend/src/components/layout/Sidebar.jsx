@@ -28,61 +28,19 @@ const Sidebar = ({ variant = 'mobile' }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar px-6 space-y-8 pb-8 pt-2 relative z-10">
-                {/* --- TIPO COMPROBANTE --- */}
+                {/* --- EMPRESA --- */}
                 <div className="space-y-4 pt-2">
-                    <label className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2 block">TIPO COMPROBANTE</label>
-                    <div className="flex flex-wrap gap-3">
-                        {['Egreso', 'Ingreso', 'Nómina', 'Pago'].map(type => {
-                            const isSelected = filters.tipo?.includes(type);
-                            return (
-                                <motion.button
-                                    key={type}
-                                    whileHover={{ scale: 1.05, x: 2 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => {
-                                        const current = filters.tipo || [];
-                                        const next = current.includes(type)
-                                            ? current.filter(t => t !== type)
-                                            : [...current, type];
-                                        setFilter('tipo', next);
-                                    }}
-                                    className={`text-xs transition-all duration-200 px-4 py-2 rounded-full border ${isSelected
-                                        ? 'bg-white/95 text-[#5b6ec4] font-bold border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
-                                        : 'bg-white/10 text-white border-white/25 hover:bg-white/20'
-                                        }`}
-                                >
-                                    {type}
-                                </motion.button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* --- MÉTODO DE PAGO --- */}
-                <div className="space-y-4 pt-2">
-                    <label className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2 block">MÉTODO DE PAGO</label>
-                    <div className="flex flex-wrap gap-3">
-                        {['Otros', 'PPD (Pago Diferido)', 'PUE (Pago Una Exhib.)'].map(method => {
-                            const isSelected = filters.metodo?.includes(method);
-                            return (
-                                <motion.button
-                                    key={method}
-                                    whileHover={{ scale: 1.05, x: 2 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => {
-                                        const current = filters.metodo || [];
-                                        const next = current.includes(method) ? current.filter(m => m !== method) : [...current, method];
-                                        setFilter('metodo', next);
-                                    }}
-                                    className={`text-xs transition-all duration-200 px-4 py-2 rounded-full border ${isSelected
-                                        ? 'bg-white/95 text-[#5b6ec4] font-bold border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
-                                        : 'bg-white/10 text-white border-white/25 hover:bg-white/20'
-                                        }`}
-                                >
-                                    {method}
-                                </motion.button>
-                            );
-                        })}
+                    <label className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2 block">EMPRESA</label>
+                    <div className="relative">
+                        <select
+                            value={filters.empresa || 'TENANT_001'}
+                            onChange={(e) => setFilter('empresa', e.target.value)}
+                            className="w-full appearance-none bg-black/20 border border-white/20 rounded-[10px] py-2 px-3 text-sm text-white focus:outline-none focus:border-white/60 focus:ring-4 focus:ring-white/5 transition-all"
+                        >
+                            <option value="TENANT_001" className="bg-[#6a5eae]">TENANT_001 (Empresa Principal)</option>
+                            <option value="TENANT_002" className="bg-[#6a5eae]">TENANT_002 (Sucursal)</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none" />
                     </div>
                 </div>
 
@@ -129,6 +87,128 @@ const Sidebar = ({ variant = 'mobile' }) => {
                             <span className="text-[14px]">✓</span>
                             Período: {new Date(0, (filters.month || 2) - 1).toLocaleString('es-MX', { month: 'long' }).charAt(0).toUpperCase() + new Date(0, (filters.month || 2) - 1).toLocaleString('es-MX', { month: 'long' }).slice(1)} {filters.year || 2026}
                         </span>
+                    </div>
+                </div>
+
+                {/* --- TIPO COMPROBANTE --- */}
+                <div className="space-y-4 pt-2">
+                    <label className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2 block">TIPO COMPROBANTE</label>
+                    <div className="flex flex-wrap gap-3">
+                        {['Egreso', 'Ingreso'].map(type => {
+                            const isSelected = filters.tipo?.includes(type);
+                            return (
+                                <motion.button
+                                    key={type}
+                                    whileHover={{ scale: 1.05, x: 2 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        const current = filters.tipo || [];
+                                        const next = current.includes(type)
+                                            ? current.filter(t => t !== type)
+                                            : [...current, type];
+                                        setFilter('tipo', next);
+                                    }}
+                                    className={`text-xs transition-all duration-200 px-4 py-2 rounded-full border ${isSelected
+                                        ? 'bg-white/95 text-[#5b6ec4] font-bold border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
+                                        : 'bg-white/10 text-white border-white/25 hover:bg-white/20'
+                                        }`}
+                                >
+                                    {type}
+                                </motion.button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* --- MÉTODO DE PAGO --- */}
+                <div className="space-y-4 pt-2">
+                    <label className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2 block">MÉTODO DE PAGO</label>
+                    <div className="flex flex-wrap gap-3">
+                        {['PPD (Pago Diferido)', 'PUE (Pago Una Exhib.)'].map(method => {
+                            const isSelected = filters.metodo?.includes(method);
+                            return (
+                                <motion.button
+                                    key={method}
+                                    whileHover={{ scale: 1.05, x: 2 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                        const current = filters.metodo || [];
+                                        const next = current.includes(method) ? current.filter(m => m !== method) : [...current, method];
+                                        setFilter('metodo', next);
+                                    }}
+                                    className={`text-xs transition-all duration-200 px-4 py-2 rounded-full border ${isSelected
+                                        ? 'bg-white/95 text-[#5b6ec4] font-bold border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.2)]'
+                                        : 'bg-white/10 text-white border-white/25 hover:bg-white/20'
+                                        }`}
+                                >
+                                    {method}
+                                </motion.button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* --- POLARIDAD DE MONTOS --- */}
+                <div className="space-y-4 pt-2">
+                    <label className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2 block">TIPO DE MONTO</label>
+                    <div className="relative flex items-center bg-white/10 rounded-full p-1 w-full max-w-sm">
+                        {/* Selector de Fondo (Animado) */}
+                        <motion.div
+                            className="absolute h-[80%] rounded-full bg-white/95 shadow-md"
+                            layout
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                            style={{
+                                width: "33.33%",
+                                left: (() => {
+                                    if (filters.monto_min === 0.01 && filters.monto_max === null) return "33.33%"; // Positivos
+                                    if (filters.monto_min === null && filters.monto_max === -0.01) return "66.66%"; // Negativos
+                                    return "0%"; // Todos (Default)
+                                })()
+                            }}
+                        />
+
+                        {/* Botón: TODOS */}
+                        <button
+                            onClick={() => {
+                                useFilterStore.getState().setFilter('monto_min', null);
+                                useFilterStore.getState().setFilter('monto_max', null);
+                            }}
+                            className={`flex-1 relative z-10 text-[10px] sm:text-xs font-semibold py-1.5 transition-colors duration-200 ${filters.monto_min === null && filters.monto_max === null
+                                ? 'text-[#5b6ec4]'
+                                : 'text-white/70 hover:text-white'
+                                }`}
+                        >
+                            Todos
+                        </button>
+
+                        {/* Botón: POSITIVOS */}
+                        <button
+                            onClick={() => {
+                                useFilterStore.getState().setFilter('monto_min', 0.01);
+                                useFilterStore.getState().setFilter('monto_max', null);
+                            }}
+                            className={`flex-1 relative z-10 text-[10px] sm:text-xs font-semibold py-1.5 transition-colors duration-200 ${filters.monto_min === 0.01 && filters.monto_max === null
+                                ? 'text-[#5b6ec4]'
+                                : 'text-white/70 hover:text-white'
+                                }`}
+                        >
+                            Positivos
+                        </button>
+
+                        {/* Botón: NEGATIVOS */}
+                        <button
+                            onClick={() => {
+                                useFilterStore.getState().setFilter('monto_min', null);
+                                useFilterStore.getState().setFilter('monto_max', -0.01);
+                            }}
+                            className={`flex-1 relative z-10 text-[10px] sm:text-xs font-semibold py-1.5 transition-colors duration-200 ${filters.monto_min === null && filters.monto_max === -0.01
+                                ? 'text-[#5b6ec4]'
+                                : 'text-white/70 hover:text-white'
+                                }`}
+                        >
+                            Negativos
+                        </button>
                     </div>
                 </div>
             </div>

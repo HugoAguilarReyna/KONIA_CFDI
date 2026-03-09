@@ -1,6 +1,5 @@
 import api from '../../api/axiosConfig';
-
-const dashboardService = {
+import useFilterStore from '../../stores/useFilterStore'; const dashboardService = {
     getMatrizResumen: async (filters) => {
         // Convert filters to query params
         const params = new URLSearchParams();
@@ -12,6 +11,16 @@ const dashboardService = {
             const m = filters.month.toString().padStart(2, '0');
             params.append('periodo', `${filters.year}-${m}`);
         }
+        if (filters.tipo && filters.tipo.length > 0) {
+            params.append('tipo', filters.tipo.join(','));
+        }
+        if (filters.metodo && filters.metodo.length > 0) {
+            params.append('metodo', filters.metodo.join(','));
+        }
+
+        // Add amount range filters
+        if (filters.monto_min !== undefined && filters.monto_min !== null) params.append('monto_min', filters.monto_min);
+        if (filters.monto_max !== undefined && filters.monto_max !== null) params.append('monto_max', filters.monto_max);
 
         const response = await api.get(`/api/dashboard/matriz-resumen?${params.toString()}`);
         return response.data;
@@ -29,7 +38,16 @@ const dashboardService = {
 
     getMatrizTabla: async (periodo) => {
         try {
-            const response = await api.get(`/api/dashboard/matriz-resumen/tabla?periodo=${periodo}`);
+            const params = new URLSearchParams({ periodo });
+
+            // Retrieve global filters directly if available or pass as argument
+            const globalFilters = useFilterStore.getState().filters;
+            if (globalFilters.tipo && globalFilters.tipo.length > 0) params.append('tipo', globalFilters.tipo.join(','));
+            if (globalFilters.metodo && globalFilters.metodo.length > 0) params.append('metodo', globalFilters.metodo.join(','));
+            if (globalFilters.monto_min !== undefined && globalFilters.monto_min !== null) params.append('monto_min', globalFilters.monto_min);
+            if (globalFilters.monto_max !== undefined && globalFilters.monto_max !== null) params.append('monto_max', globalFilters.monto_max);
+
+            const response = await api.get(`/api/dashboard/matriz-resumen/tabla?${params.toString()}`);
             return response.data;
         } catch (error) {
             console.error("Service Error getMatrizTabla:", error);
@@ -53,6 +71,18 @@ const dashboardService = {
         if (filters.segmento) params.append('segmento', filters.segmento);
         if (filters.uuid_search) params.append('uuid_search', filters.uuid_search);
         if (filters.saldo_min !== undefined && filters.saldo_min !== null) params.append('saldo_min', filters.saldo_min);
+
+        // Use global store if filters object doesn't provide them
+        const globalFilters = useFilterStore.getState().filters;
+        const tipo = filters.tipo || globalFilters.tipo;
+        const metodo = filters.metodo || globalFilters.metodo;
+        const monto_min = filters.monto_min !== undefined ? filters.monto_min : globalFilters.monto_min;
+        const monto_max = filters.monto_max !== undefined ? filters.monto_max : globalFilters.monto_max;
+
+        if (tipo && tipo.length > 0) params.append('tipo', tipo.join(','));
+        if (metodo && metodo.length > 0) params.append('metodo', metodo.join(','));
+        if (monto_min !== undefined && monto_min !== null) params.append('monto_min', monto_min);
+        if (monto_max !== undefined && monto_max !== null) params.append('monto_max', monto_max);
 
         const response = await api.get(`/api/dashboard/detalle-uuid?${params.toString()}`);
         return response.data;

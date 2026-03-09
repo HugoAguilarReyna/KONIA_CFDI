@@ -9,11 +9,7 @@ const SubTabNav = () => {
 
     // Mapping of modules to their sub-items
     const moduleConfig = {
-        'uuid': [
-            { label: 'Matriz Resumen', path: '/' },
-            { label: 'Detalle UUID', path: '/detalle-uuid' },
-            { label: 'Trazabilidad UUID', path: '/trazabilidad' },
-        ],
+        'uuid': [],
         'analitica': [
             { label: 'Tendencias', path: '/analitica' },
             { label: 'Análisis RFC', path: '/analitica/rfc' },

@@ -16,7 +16,9 @@ const Navbar = () => {
             label: 'Cuenta T',
             items: [
                 { label: 'KPIS', path: '/kpis' },
-                { label: 'UUID', path: '/' },
+                { label: 'Cuenta T Agregada', path: '/' },
+                { label: 'Cuenta T Individual', path: '/detalle-uuid' },
+                { label: 'Cuenta T Soporte', path: '/trazabilidad' },
                 { label: 'Analítica', path: '/analitica' },
                 { label: 'Prellenado', path: '/prellenado' },
             ]

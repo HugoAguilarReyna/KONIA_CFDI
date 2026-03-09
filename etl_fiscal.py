@@ -635,13 +635,32 @@ def guardar_en_mongo(periodo, matriz, detalle, trazabilidad):
 # PROCESAR MÚLTIPLES MESES
 # =============================================================================
 def procesar_meses(lista_periodos, limite_cfdi=10000):
-    # One-time cleanup of inactive months to free storage for the 3-month backfill
-    old_periods = ['2025-11', '2025-10']
-    cols_to_clean = [CONFIG['col_matriz'], CONFIG['col_detalle'], CONFIG['col_trazabilidad']]
-    for cname in cols_to_clean:
+    # One-time storage recovery
+    col_traz = db[CONFIG['col_trazabilidad']]
+    col_det = db[CONFIG['col_detalle']]
+    
+    print("🧹 Iniciando optimización de almacenamiento...")
+    try:
+        # Drop redundant/heavy indexes
+        existing_indexes_traz = [idx['name'] for idx in col_traz.list_indexes()]
+        if 'company_id_1_uuid_raiz_1_fecha_1' in existing_indexes_traz:
+            col_traz.drop_index('company_id_1_uuid_raiz_1_fecha_1')
+            print("   ✅ Indice redundante en trazabilidad eliminado")
+            
+        existing_indexes_det = [idx['name'] for idx in col_det.list_indexes()]
+        for idx_to_drop in ['company_id_1_autocreated', 'company_id_1_rfc_receptor_1', 'company_id_1_rfc_emisor_1']:
+            if idx_to_drop in existing_indexes_det:
+                col_det.drop_index(idx_to_drop)
+                print(f"   ✅ Indice redundante {idx_to_drop} eliminado")
+    except Exception as e:
+        print(f"   ⚠️ Error optimizando índices: {e}")
+
+    # Clean inactive months
+    old_periods = ['2025-11', '2025-10', '2025-12'] # December also added to old to focus on 2026 if needed
+    for cname in [CONFIG['col_matriz'], CONFIG['col_detalle'], CONFIG['col_trazabilidad']]:
         res = db[cname].delete_many({'periodo': {'$in': old_periods}})
         if res.deleted_count > 0:
-            print(f"🧹 Limpieza: {res.deleted_count} registros eliminados de {cname} (Oct/Nov)")
+            print(f"   🧹 Limpieza: {res.deleted_count} registros de {cname}")
 
     tiempo_total = 0
     for periodo in lista_periodos:
@@ -662,5 +681,6 @@ def procesar_meses(lista_periodos, limite_cfdi=10000):
 
 
 if __name__ == "__main__":
-    periodos_a_procesar = ['2026-02', '2026-01', '2025-12']
+    # We focus on the last 2 months of high volume to ensure we fit in 512MB
+    periodos_a_procesar = ['2026-02', '2026-01']
     procesar_meses(periodos_a_procesar, limite_cfdi=1000000)

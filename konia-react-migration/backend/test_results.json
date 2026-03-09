@@ -1,0 +1,114 @@
+INFO: FINAL CORS Origins configured: ['http://localhost:5173', 'http://localhost:3000', 'https://konia-dashboard-v2.onrender.com', 'https://konia-dashboard.onrender.com']
+Connected to MongoDB at mongodb://localhost:27017/
+Response STATUS: 200
+aging buckets: {}
+sin rep: 0
+otros count: 2271
+dist flujo: [{'_id': 'EMITIDOS', 'count': 174156, 'monto': 47496409.61}, {'_id': 'RECIBIDOS', 'count': 2401, 'monto': 131387489.87}]
+{
+  "periodo": "2026-02",
+  "bloque1_cartera_ppd": {
+    "aging_buckets": {},
+    "sin_rep_count": 0,
+    "sin_rep_monto": 0,
+    "dso_promedio_dias": 0,
+    "tasa_recuperacion": 0.0,
+    "total_ppd": 5053,
+    "total_con_rep": 0
+  },
+  "bloque2_eficiencia": {
+    "nc_excesivas_count": 0,
+    "ratio_nc_pct": 0,
+    "anticipos_pendientes": {
+      "count": 0,
+      "monto": 0
+    },
+    "otros_sin_clasificar": {
+      "count": 2271,
+      "monto": 687946.6900000001
+    }
+  },
+  "bloque3_riesgo_sat": {
+    "top5_rfc": [],
+    "concentracion_pct": 0.0,
+    "ppd_criticos_count": 0,
+    "ppd_criticos_monto": 0
+  },
+  "bloque4_inteligencia": {
+    "top10_negativos": [
+      {
+        "uuid": "289B66F9-5FA3-4BCE-87CC-8CCC8FBF5052",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -6936939.2
+      },
+      {
+        "uuid": "333AACCE-38FD-43BF-A963-97DC2631C616",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -2600230.4
+      },
+      {
+        "uuid": "25b5aba4-5138-4b78-88d3-bac9ccbaa10b",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -1747182.18
+      },
+      {
+        "uuid": "7757fff0-d7ad-4630-bb66-0b953c61f69a",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -855918.08
+      },
+      {
+        "uuid": "586299EB-8D57-514E-8A90-488D772CF232",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -600876.52
+      },
+      {
+        "uuid": "1d0b242c-4997-4eb0-a09d-9571faedc275",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -522715.21
+      },
+      {
+        "uuid": "2eb2568f-91dc-4b77-92cd-c33a84bea468",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -520275.21
+      },
+      {
+        "uuid": "9eab519f-e7c5-4078-85f4-db04e770caf2",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -519427.55
+      },
+      {
+        "uuid": "2dd97442-7c8d-44f1-bcce-0ad8c77cddda",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -517974.23
+      },
+      {
+        "uuid": "547ba8a3-74b7-4973-ac82-844b9374eae3",
+        "segmento": "PPD",
+        "flujo": "EMITIDOS",
+        "saldo_acumulado": -517475.28
+      }
+    ],
+    "cadenas_largas": [],
+    "dist_flujo": [
+      {
+        "_id": "EMITIDOS",
+        "count": 174156,
+        "monto": 47496409.61
+      },
+      {
+        "_id": "RECIBIDOS",
+        "count": 2401,
+        "monto": 131387489.87
+      }
+    ]
+  }
+}
