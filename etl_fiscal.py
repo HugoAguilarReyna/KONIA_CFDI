@@ -113,7 +113,6 @@ def extraer_datos_mes(periodo, limite=None):
             LEFT JOIN `{dataset}.public_cfdi_emisors`  e   ON c_padre.emisor_id  = e.id
             LEFT JOIN `{dataset}.public_cfdi_receptors` r  ON c_padre.receptor_id = r.id
             WHERE p.cfdi_id IN {sub_ids}
-               OR FORMAT_DATE('%Y-%m', det.fecha_pago) = {p_sql}
         """,
         # ── NUEVO: lookup de emisor/receptor para UUIDs no encontrados ──
         # (Se ejecuta más tarde, una vez que sabemos qué UUIDs necesitamos)
@@ -655,8 +654,8 @@ def procesar_meses(lista_periodos, limite_cfdi=10000):
     except Exception as e:
         print(f"   ⚠️ Error optimizando índices: {e}")
 
-    # Clean inactive months
-    old_periods = ['2025-11', '2025-10', '2025-12'] # December also added to old to focus on 2026 if needed
+    # Clean inactive months (only months older than our 6-month window)
+    old_periods = ['2025-08', '2025-07', '2025-06', '2025-05', '2025-04', '2025-03']
     for cname in [CONFIG['col_matriz'], CONFIG['col_detalle'], CONFIG['col_trazabilidad']]:
         res = db[cname].delete_many({'periodo': {'$in': old_periods}})
         if res.deleted_count > 0:
@@ -681,6 +680,6 @@ def procesar_meses(lista_periodos, limite_cfdi=10000):
 
 
 if __name__ == "__main__":
-    # We focus on the last 2 months of high volume to ensure we fit in 512MB
-    periodos_a_procesar = ['2026-02', '2026-01']
-    procesar_meses(periodos_a_procesar, limite_cfdi=1000000)
+    # 20k sample per month, last 6 months
+    periodos_a_procesar = ['2026-02', '2026-01', '2025-12', '2025-11', '2025-10', '2025-09']
+    procesar_meses(periodos_a_procesar, limite_cfdi=20000)
