@@ -588,7 +588,7 @@ async def get_trazabilidad_uuids(
         {"$limit": limit}
     ]
     try:
-        uuids = list(db["trazabilidad_uuid"].aggregate(pipeline, allowDiskUse=True))
+        uuids = list(db["trazabilidad_uuid"].aggregate(pipeline))
         
         print(f"DEBUG UUIDS PIPELINE: company_id={company_id_raw} page={page} limit={limit} count={len(uuids)}")
 
@@ -605,8 +605,9 @@ async def get_trazabilidad_uuids(
         } for u in uuids]
     except Exception as e:
         import traceback
-        print(f"ERROR TRAZABILIDAD: {str(e)}\n{traceback.format_exc()}")
+        print(f"ERROR TRAZABILIDAD UUIDs: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get("/trazabilidad/{uuid_raiz}")
