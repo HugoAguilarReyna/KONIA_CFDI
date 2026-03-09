@@ -41,6 +41,7 @@ const iconoConcepto = (concepto) => {
 // Chip de tipo relación
 const chipRelacion = (tipo) => {
     const estilos = {
+        "BASE": { bg: "#26A69A15", color: "#26A69A", border: "#26A69A30" },
         "ORIGINAL": { bg: "#26A69A15", color: "#26A69A", border: "#26A69A30" },
         "01": { bg: "#FF8A6515", color: "#FF8A65", border: "#FF8A6530" },
         "02": { bg: "#6B84F315", color: "#6B84F3", border: "#6B84F330" },
@@ -750,7 +751,7 @@ const TraceabilityView = () => {
                                 <tbody>
                                     {data.eventos.map((ev, i) => {
                                         const { icon: Icon, color, bg } = iconoConcepto(ev.concepto);
-                                        const esOriginal = ev.tipo_relacion === "ORIGINAL";
+                                        const esOriginal = ev.tipo_relacion === "BASE" || ev.tipo_relacion === "ORIGINAL";
                                         const esUltimo = i === data.eventos.length - 1;
 
                                         return (

@@ -680,14 +680,24 @@ async def get_trazabilidad_detalle(
     except (ValueError, TypeError):
         filtro_company = company_id_raw
 
-    # Búsqueda insensible a mayúsculas/minúsculas usando regex
-    eventos_raw = list(db["trazabilidad_uuid"].find(
+    # Búsqueda con ordenamiento determinista: fecha ASC, luego BASE primero
+    pipeline_detalle = [
         {
-            "company_id": filtro_company, 
-            "uuid_raiz": {"$regex": f"^{uuid_raiz}$", "$options": "i"}
+            "$match": {
+                "company_id": filtro_company, 
+                "uuid_raiz": {"$regex": f"^{uuid_raiz}$", "$options": "i"}
+            }
         },
-        {"_id": 0}
-    ).sort("fecha", 1))
+        {
+            "$addFields": {
+                "prioridad": {"$cond": [{"$eq": ["$tipo_relacion", "BASE"]}, 0, 1]}
+            }
+        },
+        {"$sort": {"fecha": 1, "prioridad": 1}},
+        {"$project": {"_id": 0, "prioridad": 0}}
+    ]
+    
+    eventos_raw = list(db["trazabilidad_uuid"].aggregate(pipeline_detalle))
 
     if not eventos_raw:
         print(f"DEBUG: UUID {uuid_raiz} not found in trazabilidad_uuid for company {company_id_raw}")
