@@ -178,14 +178,8 @@ const Navbar = () => {
                 {/* Vertical Divider */}
                 <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
 
-                {/* Right Utilities (Grid + User Account) */}
+                {/* Right Utilities (User Account) */}
                 <div className="flex items-center gap-3">
-                    {/* Grid Icon */}
-                    <button className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z" />
-                        </svg>
-                    </button>
 
                     {/* User Profile */}
                     <div className="relative">
