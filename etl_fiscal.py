@@ -56,15 +56,73 @@ def extraer_datos_mes(periodo, limite=None):
     dataset = f"{CONFIG['project_id']}.{CONFIG['dataset_id']}"
     p_sql = f"'{periodo}'"
 
-    sub_ids_base = f"""
-        SELECT id
-        FROM `{dataset}.public_cfdis`
-        WHERE FORMAT_DATE('%Y-%m', fecha_emision) = {p_sql}
-          AND company_id = {CONFIG['company_id']}
-          AND estatus = 'vigente'
-    """
     if limite:
-        sub_ids_base += f" LIMIT {limite}"
+        sub_ids_base = f"""
+            SELECT id FROM (
+                SELECT DISTINCT id FROM (
+                    -- 1. Facturas con pagos asociados (Tipo 'I')
+                    (SELECT parent.id
+                    FROM `{dataset}.public_cfdi_pago_documentos_relacionados` doc
+                    JOIN `{dataset}.public_cfdis` parent ON UPPER(parent.uuid) = UPPER(doc.id_documento)
+                    WHERE FORMAT_DATE('%Y-%m', parent.fecha_emision) = {p_sql} 
+                      AND parent.company_id = {CONFIG['company_id']} 
+                      AND parent.estatus = 'vigente'
+                    LIMIT 3000)
+                    
+                    UNION ALL
+                    
+                    -- 2. Egresos (Notas de Crédito y Devoluciones)
+                    (SELECT id 
+                    FROM `{dataset}.public_cfdis`
+                    WHERE FORMAT_DATE('%Y-%m', fecha_emision) = {p_sql} 
+                      AND company_id = {CONFIG['company_id']} 
+                      AND estatus = 'vigente' 
+                      AND tipo = 'E'
+                    LIMIT 1000)
+                    
+                    UNION ALL
+                    
+                    -- 3. Anticipos 
+                    (SELECT parent.id 
+                    FROM `{dataset}.public_cfdi_relacionados` r
+                    JOIN `{dataset}.public_cfdis` parent ON r.uuid_relacionado = parent.uuid
+                    WHERE FORMAT_DATE('%Y-%m', parent.fecha_emision) = {p_sql} 
+                      AND parent.company_id = {CONFIG['company_id']} 
+                      AND parent.estatus = 'vigente' 
+                      AND r.tipo_relacion = '07'
+                    LIMIT 500)
+                    
+                    UNION ALL
+                    
+                    -- 4. Pagos Aplicados independientes (Tipo 'P')
+                    (SELECT id 
+                    FROM `{dataset}.public_cfdis`
+                    WHERE FORMAT_DATE('%Y-%m', fecha_emision) = {p_sql} 
+                      AND company_id = {CONFIG['company_id']} 
+                      AND estatus = 'vigente' 
+                      AND tipo = 'P'
+                    LIMIT 1000)
+                    
+                    UNION ALL
+                    
+                    -- 5. Resto de facturas normales
+                    (SELECT id 
+                    FROM `{dataset}.public_cfdis`
+                    WHERE FORMAT_DATE('%Y-%m', fecha_emision) = {p_sql} 
+                      AND company_id = {CONFIG['company_id']} 
+                      AND estatus = 'vigente'
+                    LIMIT 14500)
+                )
+            ) LIMIT {limite}
+        """
+    else:
+        sub_ids_base = f"""
+            SELECT id
+            FROM `{dataset}.public_cfdis`
+            WHERE FORMAT_DATE('%Y-%m', fecha_emision) = {p_sql}
+              AND company_id = {CONFIG['company_id']}
+              AND estatus = 'vigente'
+        """
 
     sub_ids = f"({sub_ids_base})"
 
@@ -78,17 +136,18 @@ def extraer_datos_mes(periodo, limite=None):
             LEFT JOIN `{dataset}.public_cfdi_emisors`  e ON c.emisor_id  = e.id
             LEFT JOIN `{dataset}.public_cfdi_receptors` r ON c.receptor_id = r.id
             WHERE c.id IN {sub_ids}
-              AND c.tipo IN ('I', 'E')
+              AND c.tipo IN ('I', 'E', 'P')
         """,
         'relaciones_origen': f"""
             SELECT
                 r.cfdi_id AS child_id,
                 r.tipo_relacion,
                 parent.metodo_pago AS metodo_padre,
-                parent.uuid AS uuid_padre
+                parent.uuid AS uuid_padre,
+                parent.id AS parent_id
             FROM `{dataset}.public_cfdi_relacionados` r
             JOIN `{dataset}.public_cfdis` parent ON r.uuid_relacionado = parent.uuid
-            WHERE r.cfdi_id IN {sub_ids}
+            WHERE (r.cfdi_id IN {sub_ids} OR parent.id IN {sub_ids})
               AND parent.estatus = 'vigente'
         """,
         'pagos_reps': f"""
@@ -214,13 +273,15 @@ def fetch_cfdi_basicos(uuids_missing):
 # =============================================================================
 def definir_segmento(row):
     tipo = str(row['tipo']).upper()
-    metodo = str(row['metodo_pago']).upper()
+    metodo = str(row.get('metodo_pago', '')).upper()
     metodo_padre = str(row.get('metodo_padre', '')).upper()
     if tipo == 'I':
-        return metodo if metodo in ['PUE', 'PPD'] else 'OTROS'
+        return metodo if metodo in ['PUE', 'PPD'] else 'PUE'
     if tipo == 'E':
         return metodo_padre if metodo_padre in ['PUE', 'PPD'] else (metodo if metodo in ['PUE', 'PPD'] else 'PUE')
-    return 'OTROS'
+    if tipo == 'P':
+        return 'PPD'
+    return 'PUE'
 
 
 def clasificar_flujo(row, rfc_empresa):
@@ -239,6 +300,8 @@ def clasificar_concepto(row):
     rel = rel_raw.split('.')[0].zfill(2) if rel_raw and rel_raw.lower() not in ['nan', 'na', ''] else 'NA'
     monto = float(row['total']) if pd.notna(row.get('total')) else 0.0
 
+    if t == 'P':
+        return '8. (-) Pagos Aplicados (08/09)', 0.0
     if t == 'I' and rel not in ['02']:
         return '1. (+) Total Facturado', monto
     if t == 'E' and rel == '01':
@@ -281,13 +344,29 @@ def generar_reportes_mes(periodo, limite_cfdi=10000):
     df['Periodo'] = periodo
     df['total'] = pd.to_numeric(df['total'], errors='coerce').fillna(0.0)
     df['metodo_pago'] = df['metodo_pago'].fillna('ND')
-    df['tipo'] = 'I'  # DEFAULT: Invoices
+    # DO NOT OVERWRITE df['tipo'], it accurately contains 'I', 'E', or 'P'!
 
     if not rels.empty:
         id_to_uuid = df.set_index('id')['uuid'].to_dict()
         rels['uuid_hijo'] = rels['child_id'].map(id_to_uuid)
-        rels_simple = rels.groupby('child_id').first().reset_index()
-        df = df.merge(rels_simple, left_on='id', right_on='child_id', how='left')
+        
+        # Unify both child and parent relationships into a single dictionary
+        # If a CFDI is a child, it inherits the relation metadata.
+        # If a CFDI is a parent (Anticipo), it inherits the relation metadata.
+        rel_map = {}
+        for row in rels.to_dict(orient='records'):
+            child_id = row.get('child_id')
+            parent_id = row.get('parent_id')
+            tipo_rel = row.get('tipo_relacion', 'NA')
+            metodo_padre = row.get('metodo_padre', 'NA')
+            
+            if pd.notna(child_id):
+                rel_map[child_id] = {'tipo_relacion': tipo_rel, 'metodo_padre': metodo_padre}
+            if pd.notna(parent_id):
+                rel_map[parent_id] = {'tipo_relacion': tipo_rel, 'metodo_padre': metodo_padre}
+                
+        df['tipo_relacion'] = df['id'].map(lambda x: rel_map.get(x, {}).get('tipo_relacion', 'NA'))
+        df['metodo_padre'] = df['id'].map(lambda x: rel_map.get(x, {}).get('metodo_padre', 'NA'))
     else:
         df['tipo_relacion'] = 'NA'
         df['metodo_padre'] = 'NA'
@@ -302,6 +381,9 @@ def generar_reportes_mes(periodo, limite_cfdi=10000):
     df['Monto_Real'] = res[1]
 
     t3 = time.time()
+
+    # Calculate Aggregation on Invoices/Egresos BEFORE payments corrupt uuid matching
+    df_agg_base = df.groupby(['Segmento', 'Concepto_Financiero'])['Monto_Real'].sum().reset_index()
 
     if not pagos.empty:
         pagos['fecha_pago'] = pd.to_datetime(pagos['fecha_pago'])
@@ -318,8 +400,16 @@ def generar_reportes_mes(periodo, limite_cfdi=10000):
         pagos_detalle.rename(columns={'uuid_factura': 'uuid'}, inplace=True)
         for col_name in ['id', 'total']:
             pagos_detalle[col_name] = None
-
+        
+        # Add Pagos instantly to the aggregated DataFrame
+        df_agg_pagos = pagos_detalle.groupby(['Segmento', 'Concepto_Financiero'])['Monto_Real'].sum().reset_index()
+        df_agg = pd.concat([df_agg_base, df_agg_pagos], ignore_index=True)
+        df_agg = df_agg.groupby(['Segmento', 'Concepto_Financiero'])['Monto_Real'].sum().reset_index()
+        
+        # Merge for details
         df = pd.concat([df, pagos_detalle], ignore_index=True, sort=False)
+    else:
+        df_agg = df_agg_base
 
     # ── FIX: Rellenar nulls de rfc/nombre dentro del mismo UUID ────────────
     # Para UUIDs que tienen alguna fila con datos (ej. factura orig + pago),
@@ -354,7 +444,7 @@ def generar_reportes_mes(periodo, limite_cfdi=10000):
     print(f"   ⏱️ Integración pagos + fix nulls: {t4 - t3:.1f}s")
 
     # ========== 1. MATRIZ RESUMEN ==========
-    df_agg = df.groupby(['Segmento', 'Concepto_Financiero'])['Monto_Real'].sum().reset_index()
+    # df_agg is already calculated securely!
 
     conceptos_fijos = [
         '1. (+) Total Facturado',
@@ -368,11 +458,20 @@ def generar_reportes_mes(periodo, limite_cfdi=10000):
     segmentos_fijos = ['PPD', 'PUE']
 
     matriz = []
+    
+    # ── FIX: Flatten df_agg to a robust dictionary to avoid boolean mask failures
+    agg_dict = {}
+    for row in df_agg.itertuples(index=False):
+        seg = row.Segmento
+        conc = row.Concepto_Financiero
+        monto = row.Monto_Real
+        agg_dict[(seg, conc)] = agg_dict.get((seg, conc), 0.0) + monto
+
     for seg in segmentos_fijos:
         for concepto in conceptos_fijos:
-            monto = df_agg[(df_agg['Segmento'] == seg) & (df_agg['Concepto_Financiero'] == concepto)]['Monto_Real'].sum()
+            monto = agg_dict.get((seg, concepto), 0.0)
             matriz.append({'periodo': periodo, 'company_id': CONFIG['company_id'],
-                           'segmento': seg, 'concepto': concepto, 'monto': monto})
+                           'segmento': seg, 'concepto': concepto, 'monto': float(monto)})
 
     conceptos_saldo = ['1. (+) Total Facturado', '2. (-) Notas de Crédito (01)',
                        '4. (-) Devoluciones (03)', '7. (-) Anticipo (07)', '8. (-) Pagos Aplicados (08/09)']
@@ -381,7 +480,7 @@ def generar_reportes_mes(periodo, limite_cfdi=10000):
         matriz.append({'periodo': periodo, 'company_id': CONFIG['company_id'],
                        'segmento': seg,
                        'concepto': '9. (=) Saldo ' + ('Insoluto PPD' if seg == 'PPD' else 'Teórico PUE'),
-                       'monto': saldo})
+                       'monto': float(saldo)})
 
     t5 = time.time()
     print(f"   ⏱️ Matriz resumen: {t5 - t4:.1f}s")
