@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz Fiscal Resumen</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Prop Types & Recharts -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+
+    <!-- Tailwind CSS (for utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ERROR HANDLER FOR DEBUGGING -->
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            document.body.innerHTML += '<div style="color:red; background:white; padding:20px; border:1px solid red; margin:20px; font-family:monospace; z-index:9999; position:relative;">' +
+                '<h3>⚠️ JavaScript Error</h3>' +
+                '<p><strong>Message:</strong> ' + message + '</p>' +
+                '<p><strong>Source:</strong> ' + source + ':' + lineno + ':' + colno + '</p>' +
+                '<pre>' + (error ? error.stack : 'No stack trace') + '</pre>' +
+                '</div>';
+        };
+    </script>
+
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --gray: #95a5a6;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .fiscal-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+
+        .fiscal-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .animate-enter {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const {
+            BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+            XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            ComposedChart, LabelList
+        } = Recharts;
+
+        // --- MOCK DATA ---
+        const MOCK_DATA = {
+            mes_anterior: "2025-11",
+            mes_actual: "2025-12",
+            data: [],
+            history_data: []
+        };
+
+        // --- FORMATTERS ---
+        const formatCurrencyMillions = (value) => {
+            if (Math.abs(value) >= 1_000_000) {
+                return `$${(value / 1_000_000).toFixed(1)}M`;
+            }
+            return `$${(value / 1000).toFixed(0)}k`;
+        };
+
+        // --- ICONS ---
+        const IconX = ({ size = 16, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+        );
+        const IconChevronDown = ({ size = 18, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>
+        );
+        const IconSearch = ({ size = 18, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+        );
+        const IconCalendar = ({ size = 18, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
+        );
+        const IconTrendingUp = ({ size = 18, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+        );
+
+        // --- PREMIUM FILTERS SIDEBAR COMPONENT ---
+        const PremiumFilters = ({
+            comprobante, setComprobante,
+            metodoPago, setMetodoPago,
+            busqueda, setBusqueda,
+            agrupacion, setAgrupacion,
+            fiscalYear, setFiscalYear,
+            mesOperacion, setMesOperacion
+        }) => {
+
+            const comprobantesOpciones = ['E', 'I', 'N', 'P'];
+            const metodoPagoOpciones = ['PPD', 'PUE'];
+            const meses = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+
+            const toggleComprobante = (valor) => {
+                setComprobante(prev => prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor]);
+            };
+
+            const toggleMetodoPago = (valor) => {
+                setMetodoPago(prev => prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor]);
+            };
+
+            const removerComprobante = (valor) => setComprobante(prev => prev.filter(v => v !== valor));
+            const removerMetodoPago = (valor) => setMetodoPago(prev => prev.filter(v => v !== valor));
+
+            return (
+                <div className="w-80 flex-shrink-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 p-6 flex flex-col text-white overflow-y-auto h-screen sticky top-0 shadow-2xl z-10">
+
+                    {/* Efecto de fondo decorativo */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+                    </div>
+
+                    <div className="relative z-10">
+                        {/* Header */}
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Filtros Avanzados</h2>
+                            <div className="h-1 w-16 bg-gradient-to-r from-blue-300 to-cyan-300 rounded-full"></div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Tipo Comprobante */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-300"></div>
+                                    <label className="text-white font-semibold text-sm">Tipo Comprobante</label>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {comprobantesOpciones.map(tipo => {
+                                        const isActive = comprobante.includes(tipo);
+                                        return (
+                                            <button
+                                                key={tipo}
+                                                onClick={() => toggleComprobante(tipo)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 flex items-center gap-1 shadow-md 
+                                                    ${isActive ? 'bg-gradient-to-br from-blue-400 to-blue-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+                                            >
+                                                {tipo}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-white/10"></div>
+
+                            {/* Método de Pago */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-300"></div>
+                                    <label className="text-white font-semibold text-sm">Método de Pago</label>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {metodoPagoOpciones.map(metodo => {
+                                        const isActive = metodoPago.includes(metodo);
+                                        return (
+                                            <button
+                                                key={metodo}
+                                                onClick={() => toggleMetodoPago(metodo)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 flex items-center gap-1 shadow-md 
+                                                    ${isActive ? 'bg-gradient-to-br from-blue-400 to-blue-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+                                            >
+                                                {metodo}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-white/10"></div>
+
+                            {/* Búsqueda */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <IconSearch size={14} className="text-cyan-300" />
+                                    <label className="text-white font-semibold text-sm">Buscar Concepto</label>
+                                </div>
+                                <div className="relative group">
+                                    <input
+                                        type="text"
+                                        placeholder="Filtrar..."
+                                        value={busqueda}
+                                        onChange={(e) => setBusqueda(e.target.value)}
+                                        className="w-full px-4 py-2 bg-white/10 border border-white/20 text-white placeholder-white/50 rounded-xl focus:outline-none focus:border-cyan-300 focus:ring-1 focus:ring-cyan-300/30 transition-all duration-300 text-sm backdrop-blur-sm"
+                                    />
+                                    {busqueda && (
+                                        <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors">
+                                            <IconX size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="h-px bg-white/10"></div>
+
+                            {/* Mes de Operación (Visual - Linked to Backend Selection) */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <IconCalendar size={14} className="text-cyan-300" />
+                                    <label className="text-white font-semibold text-sm">Período Activo</label>
+                                </div>
+                                <div className="px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white text-center font-bold text-sm">
+                                    {mesOperacion}
+                                </div>
+                                <p className="text-[10px] text-white/50 text-center">Controlado por menú principal</p>
+                            </div>
+
+                            {/* Botones de Acción */}
+                            <div className="pt-4">
+                                <button onClick={() => { setComprobante(['E', 'I', 'N', 'P']); setMetodoPago(['PPD', 'PUE']); setBusqueda(''); }} className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all duration-300 border border-white/30 hover:border-white/50 text-sm backdrop-blur-sm">
+                                    Limpiar Filtros
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                    <style>{`
+                        @keyframes blob {
+                        0%, 100% { transform: translate(0, 0) scale(1); }
+                        33% { transform: translate(10px, -20px) scale(1.1); }
+                        66% { transform: translate(-10px, 10px) scale(0.9); }
+                        }
+                        .animate-blob { animation: blob 7s infinite; }
+                        .animation-delay-2000 { animation-delay: 2s; }
+                    `}</style>
+                </div>
+            );
+        };
+
+        // --- COMPONENTS ---
+
+        const StatCard = ({ title, value, subValue, trend, icon, color, helpText }) => (
+            <div className="card flex flex-col justify-between h-full relative group">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-500 uppercase mb-1">{title}</h3>
+                        <span className={`text-2xl font-extrabold ${value.includes('-$') ? 'text-red-600' : 'text-gray-800'}`}>
+                            {value}
+                        </span>
+                    </div>
+                    <div className={`p-2 rounded-lg bg-${color}-50 text-${color}-600 text-xl`}>{icon}</div>
+                </div>
+                <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-xs">
+                    {subValue ? (
+                        <span className={trend === 'up' ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>
+                            {subValue} <span className="text-gray-400 font-normal">vs mes ant.</span>
+                        </span>
+                    ) : <span className="text-gray-400">Sin datos</span>}
+                </div>
+                {helpText && (
+                    <div className="absolute top-2 right-12 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs p-2 rounded w-48 z-50 pointer-events-none">
+                        {helpText}
+                    </div>
+                )}
+            </div>
+        );
+
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+                minimumFractionDigits: 2
+            }).format(value);
+        };
+
+        const formatPercent = (val) => `${val > 0 ? '+' : ''}${val.toFixed(1)}%`;
+
+        const COLORS = {
+            ppd: '#e67e22',
+            pue: '#16a085',
+            facturado: '#3498db',
+            pagos: '#27ae60',
+            nc: '#e74c3c',
+            anticipo: '#f1c40f',
+            saldo: '#8e44ad'
+        };
+
+        const MatrizTable = ({ data, prevPeriod, currPeriod, showZeros, compactMode }) => {
+            const grouped = useMemo(() => {
+                const map = {};
+                ["PPD", "PUE"].forEach(seg => { map[seg] = {}; });
+
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        if (!map[item.segmento]) map[item.segmento] = {};
+                        if (!map[item.segmento][item.concepto]) map[item.segmento][item.concepto] = { [prevPeriod]: 0, [currPeriod]: 0 };
+                        map[item.segmento][item.concepto][item.periodo] = item.monto;
+                    });
+                }
+
+                const commonConcepts = [
+                    "1. (+) Total Facturado", "2. (-) Notas de Crédito (01)", "3. (+) Nota de Débito (02)",
+                    "4. (-) Devoluciones (03)", "5. (-) Sustituciones (04)", "6. Traslado de mercancía (05,06)",
+                    "7. (-) Anticipo (07)", "8. (-) Pagos Aplicados (08/09)"
+                ];
+
+                const result = [];
+                ["PPD", "PUE"].forEach(seg => {
+                    commonConcepts.forEach(conc => {
+                        const vals = map[seg]?.[conc] || { [prevPeriod]: 0, [currPeriod]: 0 };
+                        result.push({
+                            segmento: seg,
+                            concepto: conc,
+                            prev: vals[prevPeriod] || 0,
+                            curr: vals[currPeriod] || 0,
+                            total: (vals[prevPeriod] || 0) + (vals[currPeriod] || 0),
+                            isTotal: false
+                        });
+                    });
+
+                    const closingKey = seg === 'PPD' ? "9. (=) Saldo Insoluto PPD" : "9. (=) Saldo Teórico PUE";
+                    const closingVals = map[seg]?.[closingKey] || { [prevPeriod]: 0, [currPeriod]: 0 };
+                    result.push({
+                        segmento: seg,
+                        concepto: closingKey,
+                        prev: closingVals[prevPeriod] || 0,
+                        curr: closingVals[currPeriod] || 0,
+                        total: (closingVals[prevPeriod] || 0) + (closingVals[currPeriod] || 0),
+                        isTotal: true
+                    });
+                });
+                return result;
+            }, [data, prevPeriod, currPeriod]);
+
+            return (
+                <div className="card overflow-x-auto">
+                    <table className="fiscal-table w-full">
+                        <thead>
+                            <tr>
+                                <th>Segmento</th>
+                                <th className="text-left">Concepto</th>
+                                <th className="text-right">{prevPeriod}</th>
+                                <th className="text-right">{currPeriod}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {grouped.map((r, i) => (
+                                <tr key={i} className={r.isTotal ? 'bg-indigo-50 font-bold' : 'hover:bg-gray-50'}>
+                                    <td className="text-xs font-bold text-center">
+                                        <span className={`px-2 py-1 rounded ${r.segmento === 'PPD' ? 'bg-orange-100 text-orange-800' : 'bg-teal-100 text-teal-800'}`}>{r.segmento}</span>
+                                    </td>
+                                    <td className="text-sm text-gray-700">{r.concepto}</td>
+                                    <td className="text-right font-mono text-sm">{compactMode ? formatCurrencyMillions(r.prev) : formatCurrency(r.prev)}</td>
+                                    <td className="text-right font-mono text-sm">{compactMode ? formatCurrencyMillions(r.curr) : formatCurrency(r.curr)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        };
+
+        const ChartsSection = ({ data, historyData, prevPeriod, currPeriod }) => {
+            const facturacionData = useMemo(() => {
+                if (!historyData || historyData.length === 0) {
+                    // Safety check if data is undefined
+                    if (!data) return [];
+                    const getVal = (per, seg) => data.find(d => d.periodo === per && d.segmento === seg && d.concepto === "1. (+) Total Facturado")?.monto || 0;
+                    return [
+                        { name: prevPeriod, PPD: getVal(prevPeriod, 'PPD'), PUE: getVal(prevPeriod, 'PUE'), total: getVal(prevPeriod, 'PPD') + getVal(prevPeriod, 'PUE'), variation: 0 },
+                        { name: currPeriod, PPD: getVal(currPeriod, 'PPD'), PUE: getVal(currPeriod, 'PUE'), total: getVal(currPeriod, 'PPD') + getVal(currPeriod, 'PUE'), variation: 0 }
+                    ];
+                }
+
+                const periods = [...new Set(historyData.map(d => d.periodo))].sort();
+                return periods.map((p, idx) => {
+                    const monthData = historyData.filter(d => d.periodo === p);
+                    const getSumSeg = (seg, c) => monthData.filter(d => d.segmento === seg && d.concepto === c).reduce((sum, item) => sum + item.monto, 0);
+
+                    const ppd = getSumSeg('PPD', "1. (+) Total Facturado");
+                    const pue = getSumSeg('PUE', "1. (+) Total Facturado");
+                    const total = ppd + pue;
+
+                    return { name: p, PPD: ppd, PUE: pue, total };
+                }).map((item, idx, arr) => {
+                    if (idx === 0) return { ...item, variation: 0 };
+                    const prev = arr[idx - 1].total;
+                    const variation = prev !== 0 ? ((item.total - prev) / prev) * 100 : 0;
+                    return { ...item, variation };
+                });
+            }, [data, historyData, prevPeriod, currPeriod]);
+
+            const saldosData = useMemo(() => {
+                const sourceData = (historyData && historyData.length > 0) ? historyData : (data || []);
+                const periods = [...new Set(sourceData.map(d => d.periodo))].sort().slice(-13);
+
+                return periods.map(p => {
+                    const monthData = sourceData.filter(d => d.periodo === p);
+                    const getSum = (substr) => monthData.filter(d => d.concepto.includes(substr)).reduce((acc, curr) => acc + curr.monto, 0);
+
+                    const saldoPPD = getSum("Saldo Insoluto PPD");
+                    const saldoPUE = getSum("Saldo Teórico PUE");
+                    const anticipos = getSum("Anticipo");
+
+                    return {
+                        name: p,
+                        "Saldo PPD": saldoPPD,
+                        "Saldo PUE": saldoPUE,
+                        "Anticipos": Math.abs(anticipos) * -1
+                    };
+                });
+            }, [data, historyData]);
+
+            const compositionData = useMemo(() => {
+                if (!data) return [];
+                const getSum = (substr) => data.filter(d => d.periodo === currPeriod && d.concepto.includes(substr)).reduce((acc, curr) => acc + curr.monto, 0);
+                return [
+                    { name: 'PPD', value: getSum("Saldo Insoluto PPD"), color: COLORS.ppd },
+                    { name: 'PUE', value: getSum("Saldo Teórico PUE"), color: COLORS.pue },
+                    { name: 'Anticipos', value: Math.abs(getSum("Anticipo")), color: COLORS.anticipo }
+                ].filter(d => d.value > 0);
+            }, [data, currPeriod]);
+
+            const movimientosData = useMemo(() => {
+                if (!data) return [];
+                const concepts = [
+                    { key: "Total Facturado", label: "Facturación", color: COLORS.facturado },
+                    { key: "Notas de Crédito", label: "Notas Crédito", color: COLORS.nc },
+                    { key: "Nota de Débito", label: "Notas Débito", color: '#9b59b6' },
+                    { key: "Anticipo", label: "Anticipos", color: COLORS.anticipo },
+                    { key: "Pagos Aplicados", label: "Pagos", color: COLORS.pagos }
+                ];
+
+                return concepts.map(c => {
+                    const getVal = (p) => data.filter(d => d.periodo === p && d.concepto.includes(c.key)).reduce((acc, item) => acc + Math.abs(item.monto), 0);
+                    return {
+                        name: c.label,
+                        [prevPeriod]: getVal(prevPeriod),
+                        [currPeriod]: getVal(currPeriod),
+                        color: c.color
+                    };
+                });
+            }, [data, prevPeriod, currPeriod]);
+
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+                    <div className="card h-96">
+                        <h4 className="font-bold text-gray-600 mb-4">Facturación Total + Tendencia</h4>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={facturacionData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" />
+                                <YAxis yAxisId="left" tickFormatter={formatCurrencyMillions} />
+                                <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                                <Tooltip formatter={(val, name) => name === 'variation' ? `${val.toFixed(1)}%` : formatCurrency(val)} />
+                                <Legend />
+                                <Bar yAxisId="left" dataKey="PPD" stackId="a" fill={COLORS.ppd}>
+                                    <LabelList dataKey="PPD" position="center" formatter={formatCurrencyMillions} style={{ fill: '#fff', fontSize: 10 }} />
+                                </Bar>
+                                <Bar yAxisId="left" dataKey="PUE" stackId="a" fill={COLORS.pue}>
+                                    <LabelList dataKey="PUE" position="top" formatter={formatCurrencyMillions} style={{ fill: '#666', fontSize: 10 }} />
+                                </Bar>
+                                <Line yAxisId="right" type="monotone" dataKey="variation" stroke="#e74c3c" strokeWidth={2} dot={{ r: 4 }} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="card h-96">
+                        <h4 className="font-bold text-gray-600 mb-4">Saldos Insolutos (Cifras negativas = A favor)</h4>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={saldosData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" />
+                                <YAxis tickFormatter={formatCurrencyMillions} />
+                                <Tooltip formatter={(val) => formatCurrency(val)} />
+                                <Legend />
+                                <Bar dataKey="Saldo PPD" stackId="a" fill={COLORS.ppd} />
+                                <Bar dataKey="Saldo PUE" stackId="a" fill={COLORS.pue} />
+                                <Bar dataKey="Anticipos" stackId="a" fill={COLORS.anticipo} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="card h-80">
+                        <h4 className="font-bold text-gray-600 mb-4">Composición de Saldos ({currPeriod})</h4>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={compositionData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                                    {compositionData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                </Pie>
+                                <Tooltip formatter={(val) => formatCurrency(val)} />
+                                <Legend verticalAlign="middle" align="right" layout="vertical" />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="card h-80">
+                        <h4 className="font-bold text-gray-600 mb-4">Movimientos: {prevPeriod} vs {currPeriod}</h4>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={movimientosData} layout="vertical" margin={{ left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                                <XAxis type="number" tickFormatter={formatCurrencyMillions} />
+                                <YAxis dataKey="name" type="category" width={100} style={{ fontSize: 11 }} />
+                                <Tooltip formatter={(val) => formatCurrency(val)} />
+                                <Legend />
+                                <Bar dataKey={prevPeriod} fill="#95a5a6" radius={[0, 4, 4, 0]} />
+                                <Bar dataKey={currPeriod} fill="#2c3e50" radius={[0, 4, 4, 0]}>
+                                    <LabelList dataKey={currPeriod} position="right" formatter={formatCurrencyMillions} style={{ fontSize: 10, fill: '#333' }} />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            );
+        };
+
+        const MatrixApp = () => {
+            const [appData, setAppData] = useState(window.data || MOCK_DATA);
+            const [isCompact, setIsCompact] = useState(false);
+            const { mes_anterior, mes_actual, data, history_data } = appData;
+
+            // --- FILTER STATE ---
+            const [comprobante, setComprobante] = useState(['E', 'I', 'N', 'P']);
+            const [metodoPago, setMetodoPago] = useState(['PPD', 'PUE']);
+            const [busqueda, setBusqueda] = useState('');
+            const [agrupacion, setAgrupacion] = useState('MENSUAL');
+            const [fiscalYear, setFiscalYear] = useState(mes_actual.substring(0, 4));
+            const [mesOperacion, setMesOperacion] = useState(mes_actual);
+
+            // --- FILTER LOGIC ---
+            const getComprobanteType = (concepto) => {
+                const c = concepto.toLowerCase();
+                if (c.includes('facturado') || c.includes('debito')) return 'I';
+                if (c.includes('credito') || c.includes('devoluciones') || c.includes('sustituciones')) return 'E';
+                if (c.includes('anticipo') || c.includes('pago')) return 'P';
+                if (c.includes('traslado')) return 'T';
+                if (c.includes('nomina')) return 'N';
+                return 'Other';
+            };
+
+            const filterFn = (items) => {
+                if (!items) return [];
+                let res = items;
+
+                // 1. Filter by Metodo Pago (Segmento)
+                if (metodoPago.length < 2) {
+                    res = res.filter(item => metodoPago.includes(item.segmento));
+                }
+
+                // 2. Filter by Comprobante Type
+                if (comprobante.length < 4) {
+                    res = res.filter(item => {
+                        const type = getComprobanteType(item.concepto);
+                        return comprobante.includes(type) || type === 'Other';
+                    });
+                }
+
+                // 3. Search
+                if (busqueda) {
+                    const lowerQ = busqueda.toLowerCase();
+                    res = res.filter(item => item.concepto.toLowerCase().includes(lowerQ));
+                }
+                return res;
+            };
+
+            const filteredData = useMemo(() => filterFn(data), [data, metodoPago, comprobante, busqueda]);
+            const filteredHistoryData = useMemo(() => filterFn(history_data), [history_data, metodoPago, comprobante, busqueda]);
+
+
+            const kpis = useMemo(() => {
+                const getSum = (p, c) => filteredData.filter(d => d.periodo === p && d.concepto.includes(c)).reduce((sum, i) => sum + i.monto, 0);
+                const calcVar = (curr, prev) => prev ? ((curr - prev) / prev) * 100 : 0;
+
+                const factCurr = getSum(mes_actual, "Total Facturado");
+                const factPrev = getSum(mes_anterior, "Total Facturado");
+
+                const saldoCurr = getSum(mes_actual, "Saldo Insoluto PPD") + getSum(mes_actual, "Saldo Teórico PUE");
+
+                return {
+                    facturado: { val: factCurr, var: calcVar(factCurr, factPrev) },
+                    saldo: { val: saldoCurr, var: 0 },
+                    pagos: { val: getSum(mes_actual, "Pagos Aplicados") },
+                    anticipos: { val: getSum(mes_actual, "Anticipo") },
+                    nc: { val: getSum(mes_actual, "Notas de Crédito") },
+                };
+            }, [filteredData, mes_actual, mes_anterior]);
+
+            return (
+                <div className="flex min-h-screen bg-gray-50">
+                    {/* SIDEBAR FILTERS */}
+                    <PremiumFilters
+                        comprobante={comprobante} setComprobante={setComprobante}
+                        metodoPago={metodoPago} setMetodoPago={setMetodoPago}
+                        busqueda={busqueda} setBusqueda={setBusqueda}
+                        agrupacion={agrupacion} setAgrupacion={setAgrupacion}
+                        fiscalYear={fiscalYear} setFiscalYear={setFiscalYear}
+                        mesOperacion={mesOperacion} setMesOperacion={setMesOperacion}
+                    />
+
+                    {/* MAIN CONTENT */}
+                    <div className="flex-1 p-8 overflow-y-auto h-screen">
+                        <div className="max-w-7xl mx-auto animate-enter pb-10">
+
+                            {/* TOP BAR */}
+                            <div className="flex justify-between items-center mb-8">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-800">Matriz Fiscal Resumen (Premium)</h1>
+                                    <p className="text-gray-500 text-sm">Visión consolidada de operaciones fiscales y flujo de efectivo</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setIsCompact(!isCompact)} className="bg-white border px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 text-gray-700 shadow-sm transition-colors">
+                                        {isCompact ? 'Modo Detallado' : 'Modo Compacto'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* KPIS */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                                <StatCard title="Facturación" value={formatCurrency(kpis.facturado.val)} subValue={formatPercent(kpis.facturado.var)} trend={kpis.facturado.var > 0 ? 'up' : 'down'} icon="📄" color="blue" />
+                                <StatCard title="Saldo Total" value={formatCurrency(kpis.saldo.val)} icon="💰" color="purple" helpText="Suma de Saldos PPD y PUE" />
+                                <StatCard title="Pagos" value={formatCurrency(kpis.pagos.val)} icon="✅" color="green" />
+                                <StatCard title="Notas Crédito" value={formatCurrency(kpis.nc.val)} icon="📉" color="red" />
+                                <StatCard title="Anticipos" value={formatCurrency(kpis.anticipos.val)} icon="💵" color="yellow" />
+                            </div>
+
+                            {/* TABLE */}
+                            {/* TABLE */}
+                            <MatrizTable data={filteredData} prevPeriod={mes_anterior} currPeriod={mes_actual} compactMode={isCompact} showZeros={false} />
+
+                            {/* CHARTS */}
+                            <ChartsSection data={filteredData} historyData={filteredHistoryData} prevPeriod={mes_anterior} currPeriod={mes_actual} />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MatrixApp />);
+    </script>
+</body>
+
+</html>

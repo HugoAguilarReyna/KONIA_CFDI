@@ -88,11 +88,14 @@ import useFilterStore from '../../stores/useFilterStore'; const dashboardService
         return response.data;
     },
 
-    getUuidsDisponibles: async (periodo, page = 1, limit = 50) => {
+    getUuidsDisponibles: async (periodo, page = 1, limit = 50, filters = {}) => {
         const params = new URLSearchParams();
         if (periodo) params.append('periodo', periodo);
         params.append('page', page);
         params.append('limit', limit);
+        if (filters.uuid_search) params.append('uuid_search', filters.uuid_search);
+        if (filters.eventos_filter) params.append('eventos_filter', filters.eventos_filter);
+        if (filters.estado_filter) params.append('estado_filter', filters.estado_filter);
         const response = await api.get(`/api/dashboard/trazabilidad/uuids?${params.toString()}`);
         return response.data;
     },

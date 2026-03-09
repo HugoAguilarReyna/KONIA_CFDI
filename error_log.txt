@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "D:\antigravity\Dashboard_Leopoldo\pm_dashb-main\bq_test18.py", line 11, in <module>
+    matriz, detalle, traz, t = etl_fiscal.generar_reportes_mes('2026-02', limite_cfdi=20000)
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: cannot unpack non-iterable NoneType object

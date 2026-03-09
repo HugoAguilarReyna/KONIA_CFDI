@@ -1,0 +1,17 @@
+{
+  "_id": "6993b52916231b9863fce1f5",
+  "periodo": "2026-02",
+  "fecha_inicio": "2026-02-01T00:00:00",
+  "fecha_fin": "2026-02-28T00:00:00",
+  "id_tiempo": 202602,
+  "anio": 2026,
+  "mes": 2,
+  "trimestre": 1.0,
+  "nombre_mes_es": "FEBRERO",
+  "rango_mes_estandar": "Feb 01 - Feb 28",
+  "rango_corte_personalizado": "Feb 15 - Mar 10",
+  "rango_fechas": [
+    "2026-02-01T00:00:00",
+    "2026-02-28T00:00:00"
+  ]
+}

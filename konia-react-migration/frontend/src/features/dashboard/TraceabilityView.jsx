@@ -366,10 +366,7 @@ const TraceabilityView = () => {
         }
     }, [globalUUID]);
 
-    // Recargar la lista desde cero cuando cambia el periodo
     useEffect(() => {
-        setFiltroEstado("TODOS");
-        setFiltroEventos("TODOS");
         setUuidsDisponibles([]);
         setPage(1);
         setHasMore(true);
@@ -377,6 +374,19 @@ const TraceabilityView = () => {
         setUUIDTrazabilidad(null);
         loadUuidsDisponibles(1, true);
     }, [periodo]);
+
+    // Recargar la lista cuando cambian los filtros (con debounce para búsqueda)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (periodo) {
+                setUuidsDisponibles([]);
+                setPage(1);
+                setHasMore(true);
+                loadUuidsDisponibles(1, true);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [filtroEstado, filtroEventos, busqueda]);
 
     // Cargar detalles cuando se selecciona un UUID específico
     useEffect(() => {
@@ -393,7 +403,11 @@ const TraceabilityView = () => {
             else setLoadingMore(true);
 
             const limit = 50;
-            const res = await dashboardService.getUuidsDisponibles(periodo, targetPage, limit);
+            const res = await dashboardService.getUuidsDisponibles(periodo, targetPage, limit, {
+                uuid_search: busqueda,
+                eventos_filter: filtroEventos,
+                estado_filter: filtroEstado
+            });
             console.log(`DEBUG LOAD UUIDS (Page ${targetPage}):`, res);
 
             if (Array.isArray(res)) {
@@ -458,14 +472,8 @@ const TraceabilityView = () => {
         document.body.removeChild(link);
     };
 
-    const uuidsFiltrados = uuidsDisponibles.filter(u => {
-        const matchBusqueda = (u.uuid || "").toLowerCase().includes((busqueda || "").toLowerCase());
-        const matchEstado = filtroEstado === "TODOS" || u.estado === filtroEstado;
-        const matchEventos = filtroEventos === "TODOS"
-            || (filtroEventos === "MULTIPLES" && u.total_eventos > 1)
-            || (filtroEventos === "SIMPLE" && u.total_eventos === 1);
-        return matchBusqueda && matchEstado && matchEventos;
-    });
+    // Ya no filtramos localmente, el backend lo hace
+    const uuidsFiltrados = uuidsDisponibles;
 
     return (
         <div style={{ padding: "24px", background: "#f8fafc", minHeight: "100vh" }}>

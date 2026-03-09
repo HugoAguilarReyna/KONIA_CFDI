@@ -439,6 +439,30 @@ async def get_detalle_uuid(
     ]
     dist_raw = list(fiscal_db["detalle_uuid"].aggregate(pipeline_dist))
     distribucion = {d["_id"]: d["count"] for d in dist_raw}
+    
+    # Waterfall Global Aggregation
+    pipeline_waterfall = [
+        {"$match": filtro},
+        {"$project": {
+            "conceptos_array": {"$objectToArray": "$conceptos"},
+            "is_recibido": {"$eq": ["$flujo", "RECIBIDOS"]}
+        }},
+        {"$unwind": "$conceptos_array"},
+        {"$group": {
+            "_id": "$conceptos_array.k",
+            "monto": {"$sum": {
+                "$cond": [
+                    "$is_recibido",
+                    {"$multiply": [{"$abs": "$conceptos_array.v"}, -1]},
+                    "$conceptos_array.v"
+                ]
+            }}
+        }}
+    ]
+    waterfall_raw = list(fiscal_db["detalle_uuid"].aggregate(pipeline_waterfall))
+    waterfall_metrics = {w["_id"]: w["monto"] for w in waterfall_raw}
+    # Asegurar saldo neto global también en waterfall_metrics
+    waterfall_metrics["saldo_neto"] = saldo_total
 
     # Top 10 por saldo_acumulado
     top10_raw = list(fiscal_db["detalle_uuid"].find(
@@ -464,7 +488,8 @@ async def get_detalle_uuid(
             "ratio_emit_recib": ratio
         },
         "distribucion": distribucion,
-        "top10": top10
+        "top10": top10,
+        "waterfall": waterfall_metrics
     }
 
 @router.get("/test/trazabilidad")
@@ -548,6 +573,9 @@ async def get_trazabilidad_uuids(
     periodo: str = None,
     page: int = 1,
     limit: int = 50,
+    eventos_filter: Optional[str] = None, # 'MULTIPLES', 'SIMPLE'
+    estado_filter: Optional[str] = None,   # 'LIQUIDADO', 'INSOLUTO', 'NEGATIVO'
+    uuid_search: Optional[str] = None,
     user: dict = Depends(get_current_user_and_company)
 ):
     db = get_database().client["fiscal_reports"]
@@ -562,6 +590,8 @@ async def get_trazabilidad_uuids(
     match_filter = {"company_id": filtro_company}
     if periodo:
         match_filter["periodo"] = periodo
+    if uuid_search:
+        match_filter["uuid_raiz"] = {"$regex": uuid_search, "$options": "i"}
 
     # 1. Agrupar por uuid_raiz para obtener resumen de cada cadena
     pipeline = [
@@ -583,10 +613,36 @@ async def get_trazabilidad_uuids(
                 }
             }
         }},
+        # Post-group filtering
+        {"$addFields": {
+            "estado": {
+                "$cond": [
+                    {"$lt": [{"$abs": "$ultimo_saldo"}, 0.01]}, 
+                    "LIQUIDADO",
+                    {"$cond": [{"$lte": ["$ultimo_saldo", -0.01]}, "NEGATIVO", "INSOLUTO"]}
+                ]
+            }
+        }}
+    ]
+
+    # Apply conditional filters after grouping
+    post_match = {}
+    if eventos_filter == "MULTIPLES":
+        post_match["total_eventos"] = {"$gt": 1}
+    elif eventos_filter == "SIMPLE":
+        post_match["total_eventos"] = 1
+    
+    if estado_filter and estado_filter != "TODOS":
+        post_match["estado"] = estado_filter
+    
+    if post_match:
+        pipeline.append({"$match": post_match})
+
+    pipeline.extend([
         {"$sort": {"ultimo_evento": -1}},
         {"$skip": (page - 1) * limit},
         {"$limit": limit}
-    ]
+    ])
     try:
         uuids = list(db["trazabilidad_uuid"].aggregate(pipeline))
         

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle UUID Interactive Artifact</title>
+    <!-- React & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- UI Essentials -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Charts -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <!-- Utils -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        }
+
+        .premium-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .animate-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-value {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Custom styles for filtering and table */
+        tr:hover {
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="debug-error" style="color: red; padding: 20px; font-family: monospace; display: none;"></div>
+    <div id="root"></div>
+
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            var debugDiv = document.getElementById('debug-error');
+            debugDiv.style.display = 'block';
+            debugDiv.innerHTML += '<h4>Error:</h4>' + message + '<br>Source: ' + source + ':' + lineno + '<br>';
+            console.error(error);
+        };
+
+        // Check dependencies
+        window.onload = function () {
+            if (!window.React) console.error("React missing");
+            if (!window.ReactDOM) console.error("ReactDOM missing");
+            if (!window.Recharts) console.error("Recharts missing");
+            if (!window.data) console.warn("window.data missing - using mock data");
+        };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        const {
+            ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
+            XAxis, YAxis, Tooltip, Legend, CartesianGrid, AreaChart, Area
+        } = Recharts;
+
+        // --- MOCK DATA FOR DEVELOPMENT ---
+        const mockData = [
+            {
+                "uuid": "000050d4-1ba5-4f81-b660-31c7c4761e60",
+                "Segmento": "PUE",
+                "Flujo": "EMITIDOS",
+                "1. (+) Total Facturado": 99.10,
+                "2. (-) Notas de Crédito (01)": 0.00,
+                "4. (-) Devoluciones (03)": 0.00,
+                "7. (-) Anticipo (07)": 0.00,
+                "8. (-) Pagos Aplicados (08/09)": 0.00,
+                "9. (=) Saldo Acumulado por UUID": 99.10
+            },
+            {
+                "uuid": "000814b-fa54-4023-81a1-3094ebbb600f",
+                "Segmento": "PPD",
+                "Flujo": "EMITIDOS",
+                "1. (+) Total Facturado": 239.28,
+                "2. (-) Notas de Crédito (01)": 0.00,
+                "4. (-) Devoluciones (03)": 0.00,
+                "7. (-) Anticipo (07)": 0.00,
+                "8. (-) Pagos Aplicados (08/09)": -150.00,
+                "9. (=) Saldo Acumulado por UUID": 89.28
+            },
+            {
+                "uuid": "00027f9c-3fc4-4ab7-8e02-7f2c6bcdb183",
+                "Segmento": "PUE",
+                "Flujo": "RECIBIDOS",
+                "1. (+) Total Facturado": 249.99,
+                "2. (-) Notas de Crédito (01)": -50.00,
+                "4. (-) Devoluciones (03)": 0.00,
+                "7. (-) Anticipo (07)": 0.00,
+                "8. (-) Pagos Aplicados (08/09)": 0.00,
+                "9. (=) Saldo Acumulado por UUID": 199.99
+            }
+        ];
+
+        // --- MAIN APP COMPONENT ---
+        const UUIDDetailApp = () => {
+            // Data provided by Streamlit (placeholder if not present)
+            const [rawData, setRawData] = useState(window.data || mockData);
+            const [period, setPeriod] = useState(window.periodo || "Período Actual");
+
+            // --- FILTERS STATE ---
+            const [searchTerm, setSearchTerm] = useState("");
+            const [selectedSegment, setSelectedSegment] = useState("ALL");
+            const [selectedFlow, setSelectedFlow] = useState("ALL");
+            const [minBalance, setMinBalance] = useState(0);
+            const [maxBalance, setMaxBalance] = useState(1000000); // Dynamic max would be better
+
+            // --- PAGINATION ---
+            const [currentPage, setCurrentPage] = useState(1);
+            const [pageSize, setPageSize] = useState(25);
+
+            // --- COMPUTED DATA ---
+            const filteredData = useMemo(() => {
+                return rawData.filter(item => {
+                    const matchesSearch = item.uuid.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesSegment = selectedSegment === "ALL" || item.Segmento === selectedSegment;
+                    const matchesFlow = selectedFlow === "ALL" || item.Flujo === selectedFlow;
+                    const balance = item["9. (=) Saldo Acumulado por UUID"];
+                    const matchesBalance = balance >= minBalance && balance <= maxBalance;
+
+                    return matchesSearch && matchesSegment && matchesFlow && matchesBalance;
+                });
+            }, [rawData, searchTerm, selectedSegment, selectedFlow, minBalance, maxBalance]);
+
+            const stats = useMemo(() => {
+                const totalUUIDs = filteredData.length;
+                const totalBalance = _.sumBy(filteredData, "9. (=) Saldo Acumulado por UUID");
+                const avgBalance = totalUUIDs > 0 ? totalBalance / totalUUIDs : 0;
+                const emitidos = _.filter(filteredData, { Flujo: "EMITIDOS" }).length;
+                const recibidos = _.filter(filteredData, { Flujo: "RECIBIDOS" }).length;
+                const ratioER = totalUUIDs > 0 ? (emitidos / totalUUIDs) * 100 : 0;
+
+                return { totalUUIDs, totalBalance, avgBalance, ratioER, emitidos, recibidos };
+            }, [filteredData]);
+
+            const chartData = useMemo(() => {
+                // PPD vs PUE
+                const segments = _.groupBy(filteredData, "Segmento");
+                const segmentPie = Object.keys(segments).map(key => ({
+                    name: key,
+                    value: segments[key].length
+                }));
+
+                // Top 10 by Balance
+                const top10 = _.orderBy(filteredData, ["9. (=) Saldo Acumulado por UUID"], ["desc"])
+                    .slice(0, 10)
+                    .map(item => ({
+                        name: item.uuid.substring(0, 8) + "...",
+                        balance: item["9. (=) Saldo Acumulado por UUID"],
+                        fullUUID: item.uuid
+                    }));
+
+                return { segmentPie, top10 };
+            }, [filteredData]);
+
+            // Pagination slice
+            const paginatedData = useMemo(() => {
+                const start = (currentPage - 1) * pageSize;
+                return filteredData.slice(start, start + pageSize);
+            }, [filteredData, currentPage, pageSize]);
+
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+
+            // Export to CSV
+            const exportToCSV = () => {
+                const headers = Object.keys(filteredData[0]).join(",");
+                const rows = filteredData.map(obj => Object.values(obj).join(","));
+                const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows.join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `detalle_uuid_${period}.csv`);
+                document.body.appendChild(link);
+                link.click();
+            };
+
+            // --- COMPONENTS ---
+            const StatCard = ({ title, value, icon, colorClass }) => (
+                <div className="glass-card rounded-2xl p-5 border-l-4 border-l-indigo-500 animate-in">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{title}</p>
+                            <h3 className="text-2xl font-bold stat-value">{value}</h3>
+                        </div>
+                        <div className={`p-2 rounded-xl bg-opacity-10 ${colorClass}`}>
+                            <i data-lucide={icon} className="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Re-mount Lucide icons on render
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [filteredData]);
+
+            return (
+                <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 pb-20">
+                    {/* Header */}
+                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in">
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-slate-800">📊 Detalle UUID</h1>
+                            <p className="text-slate-500 flex items-center gap-2 mt-1">
+                                <span className="premium-gradient text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold">LIVE</span>
+                                Explorador interactivo para el período: <span className="font-semibold text-indigo-600">{period}</span>
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={exportToCSV}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-all shadow-sm"
+                            >
+                                <i data-lucide="download" className="w-4 h-4"></i> Exportar CSV
+                            </button>
+                            <div className="relative">
+                                <i data-lucide="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por UUID..."
+                                    className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-64 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-sm"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatCard title="Total UUIDs" value={stats.totalUUIDs.toLocaleString()} icon="file-text" colorClass="bg-indigo-500 text-indigo-600" />
+                        <StatCard title="Saldo Total" value={`$${stats.totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} icon="dollar-sign" colorClass="bg-emerald-500 text-emerald-600" />
+                        <StatCard title="Promedio Saldo" value={`$${stats.avgBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon="trending-up" colorClass="bg-amber-500 text-amber-600" />
+                        <StatCard title="Ratio Emit/Recib" value={`${stats.ratioER.toFixed(1)}%`} icon="pie-chart" colorClass="bg-purple-500 text-purple-600" />
+                    </div>
+
+                    {/* Filters & Charts Block */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* Filters Panel */}
+                        <div className="lg:col-span-3 glass-card rounded-2xl p-6 space-y-6">
+                            <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                                <i data-lucide="filter" className="w-4 h-4"></i> Filtros de Negocio
+                            </h4>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter mb-2 block">Segmento Fiscal</label>
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={selectedSegment}
+                                        onChange={(e) => setSelectedSegment(e.target.value)}
+                                    >
+                                        <option value="ALL">Todos los Segmentos</option>
+                                        <option value="PUE">PUE (Pago Una Exhib.)</option>
+                                        <option value="PPD">PPD (Pago Diferido)</option>
+                                        <option value="OTROS">Otros</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter mb-2 block">Flujo de Caja</label>
+                                    <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-lg">
+                                        {['ALL', 'EMITIDOS', 'RECIBIDOS'].map(f => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setSelectedFlow(f)}
+                                                className={`py-1.5 text-[10px] font-bold rounded-md transition-all ${selectedFlow === f ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                {f === 'ALL' ? 'TODO' : f}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter mb-2 block">Rango de Saldo</label>
+                                    <div className="px-2">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="500000"
+                                            step="1000"
+                                            className="w-full accent-indigo-600"
+                                            value={minBalance}
+                                            onChange={(e) => setMinBalance(Number(e.target.value))}
+                                        />
+                                        <div className="flex justify-between text-[10px] font-mono font-bold text-slate-400 mt-1">
+                                            <span>MIN: ${minBalance.toLocaleString()}</span>
+                                            <span>MAX: 500k+</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Charts Area */}
+                        <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="glass-card rounded-2xl p-6 min-h-[300px]">
+                                <h4 className="text-sm font-bold text-slate-700 mb-6">Distribución PPD / PUE</h4>
+                                <div className="h-[200px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={chartData.segmentPie}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {chartData.segmentPie.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={index === 0 ? '#667eea' : index === 1 ? '#764ba2' : '#cbd5e1'} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                            />
+                                            <Legend verticalAlign="bottom" align="center" iconType="circle" />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            <div className="glass-card rounded-2xl p-6 min-h-[300px]">
+                                <h4 className="text-sm font-bold text-slate-700 mb-6">Top 10 UUIDs por Saldo</h4>
+                                <div className="h-[200px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData.top10} layout="vertical">
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" width={80} fontSize={10} tick={{ fill: '#94a3b8' }} />
+                                            <Tooltip
+                                                cursor={{ fill: 'rgba(102, 126, 234, 0.1)' }}
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                            />
+                                            <Bar dataKey="balance" fill="#667eea" radius={[0, 4, 4, 0]} barSize={12} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Table Section */}
+                    <div className="glass-card rounded-2xl overflow-hidden shadow-sm animate-in">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h4 className="font-bold text-slate-700">Explorador de Registros</h4>
+                            <div className="flex items-center gap-4">
+                                <span className="text-xs text-slate-500">{filteredData.length} registros encontrados</span>
+                                <select
+                                    className="text-xs border text-slate-500 border-slate-200 rounded-lg p-1 outline-none"
+                                    value={pageSize}
+                                    onChange={(e) => setPageSize(Number(e.target.value))}
+                                >
+                                    <option value={25}>25 por pág.</option>
+                                    <option value={50}>50 por pág.</option>
+                                    <option value={100}>100 por pág.</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left">
+                                <thead className="bg-white border-b border-slate-100">
+                                    <tr>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">UUID</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">SEG</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">FLUJO</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">FACTURADO</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">NC/ DEV</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">PAGOS</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">SALDO</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {paginatedData.map((item, i) => (
+                                        <tr key={item.uuid} className="group transition-all animate-in" style={{ animationDelay: `${i * 30}ms` }}>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full ${item.Flujo === 'EMITIDOS' ? 'bg-indigo-400' : 'bg-emerald-400'}`}></div>
+                                                    <span className="text-sm font-medium text-slate-700 font-mono tracking-tight group-hover:text-indigo-600 cursor-pointer transition-colors" title={item.uuid}>
+                                                        {item.uuid.substring(0, 16)}...
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${item.Segmento === 'PPD' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                    {item.Segmento}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="text-[9px] font-bold text-slate-500 uppercase">{item.Flujo}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-sm text-slate-600 font-semibold font-mono">
+                                                ${item["1. (+) Total Facturado"].toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-sm font-mono text-red-500">
+                                                {(item["2. (-) Notas de Crédito (01)"] + item["4. (-) Devoluciones (03)"]).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-sm font-mono text-emerald-600">
+                                                {item["8. (-) Pagos Aplicados (08/09)"].toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <span className="text-sm font-bold text-slate-800 font-mono">
+                                                    ${item["9. (=) Saldo Acumulado por UUID"].toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination Footer */}
+                        <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-xs text-slate-400 italic">
+                                Mostrando {Math.min(filteredData.length, pageSize)} de {filteredData.length} registros
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(p => p - 1)}
+                                    className="p-2 border rounded-lg hover:bg-slate-50 disabled:opacity-30 transition-all"
+                                >
+                                    <i data-lucide="chevron-left" className="w-4 h-4"></i>
+                                </button>
+                                <div className="flex items-center gap-1 font-bold text-xs">
+                                    <span className="text-indigo-600">{currentPage}</span>
+                                    <span className="text-slate-300">/</span>
+                                    <span className="text-slate-500">{totalPages || 1}</span>
+                                </div>
+                                <button
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    onClick={() => setCurrentPage(p => p + 1)}
+                                    className="p-2 border rounded-lg hover:bg-slate-50 disabled:opacity-30 transition-all"
+                                >
+                                    <i data-lucide="chevron-right" className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Render App
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<UUIDDetailApp />);
+    </script>
+</body>
+
+</html>

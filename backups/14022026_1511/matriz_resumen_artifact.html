@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz Fiscal Resumen</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Prop Types & Recharts -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+
+    <!-- Tailwind CSS (for utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+
+
+    <!-- ERROR HANDLER FOR DEBUGGING -->
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            document.body.innerHTML += '<div style="color:red; background:white; padding:20px; border:1px solid red; margin:20px; font-family:monospace; z-index:9999; position:relative;">' +
+                '<h3>⚠️ JavaScript Error</h3>' +
+                '<p><strong>Message:</strong> ' + message + '</p>' +
+                '<p><strong>Source:</strong> ' + source + ':' + lineno + ':' + colno + '</p>' +
+                '<pre>' + (error ? error.stack : 'No stack trace') + '</pre>' +
+                '</div>';
+        };
+        window.addEventListener('unhandledrejection', function (event) {
+            document.body.innerHTML += '<div style="color:orange; background:white; padding:20px; border:1px solid orange; margin:20px; font-family:monospace; z-index:9999; position:relative;">' +
+                '<h3>⚠️ Unhandled Promise Rejection</h3>' +
+                '<p><strong>Reason:</strong> ' + event.reason + '</p>' +
+                '</div>';
+        });
+    </script>
+
+    <style>
+        /* --- PREMIUM THEME VARIABLES --- */
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --gray: #95a5a6;
+            --gray-light: #f8f9fa;
+            --white: #ffffff;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-dark);
+        }
+
+        /* --- UTILITIES --- */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-premium {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-premium:hover {
+            opacity: 0.9;
+        }
+
+        /* --- TABLE STYLES --- */
+        .fiscal-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .fiscal-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            padding: 12px 16px;
+            text-align: right;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .fiscal-table th:first-child,
+        .fiscal-table th:nth-child(2) {
+            text-align: left;
+        }
+
+        .fiscal-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .fiscal-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .fiscal-table tr:hover td {
+            background-color: #f1f5f9;
+        }
+
+        /* Segment Styles */
+        .segment-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            width: 60px;
+            text-align: center;
+        }
+
+        .segment-ppd {
+            background-color: rgba(230, 126, 34, 0.1);
+            color: #d35400;
+            border: 1px solid rgba(230, 126, 34, 0.2);
+        }
+
+        .segment-pue {
+            background-color: rgba(22, 160, 133, 0.1);
+            color: #16a085;
+            border: 1px solid rgba(22, 160, 133, 0.2);
+        }
+
+        /* Row Highlighting */
+        .row-ppd {
+            border-left: 4px solid #e67e22;
+        }
+
+        .row-pue {
+            border-left: 4px solid #16a085;
+        }
+
+        .row-total {
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+            font-weight: 700;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        /* Monetary Values */
+        .amount-pos {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .amount-neg {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .amount-zero {
+            color: var(--gray);
+            font-weight: 400;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-enter {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* --- SCROLLBAR --- */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        const {
+            BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+            XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            AreaChart, Area
+        } = Recharts;
+
+
+        // --- MOCK DATA ---
+        const MOCK_DATA = {
+            mes_anterior: "2025-11",
+            mes_actual: "2025-12",
+            data: [
+                { periodo: "2025-11", segmento: "PPD", concepto: "1. (+) Total Facturado", monto: 57410868.91 },
+                { periodo: "2025-11", segmento: "PPD", concepto: "2. (-) Notas de Crédito (01)", monto: -102502.95 },
+                { periodo: "2025-11", segmento: "PPD", concepto: "9. (=) Saldo Insoluto PPD", monto: 57294819.45 },
+                { periodo: "2025-12", segmento: "PPD", concepto: "1. (+) Total Facturado", monto: 152234032.49 },
+                { periodo: "2025-12", segmento: "PPD", concepto: "2. (-) Notas de Crédito (01)", monto: -100742.01 },
+                { periodo: "2025-12", segmento: "PPD", concepto: "9. (=) Saldo Insoluto PPD", monto: 152130320.56 },
+                { periodo: "2025-11", segmento: "PUE", concepto: "1. (+) Total Facturado", monto: 68182396.75 },
+                { periodo: "2025-11", segmento: "PUE", concepto: "9. (=) Saldo Teórico PUE", monto: 67797007.47 },
+                { periodo: "2025-12", segmento: "PUE", concepto: "1. (+) Total Facturado", monto: 41352598.58 },
+                { periodo: "2025-12", segmento: "PUE", concepto: "9. (=) Saldo Teórico PUE", monto: 40967126.24 }
+            ]
+        };
+
+        // --- HELPER FUNCTIONS ---
+        const formatCurrency = (value) => {
+            if (value === 0) return '$0';
+            return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+                minimumFractionDigits: Math.abs(value) < 1000 ? 2 : 0,
+                maximumFractionDigits: 2
+            }).format(value);
+        };
+
+        const formatPercent = (val) => `${val > 0 ? '+' : ''}${val.toFixed(1)}%`;
+
+        // --- COMPONENTS ---
+
+        const StatCard = ({ title, value, subValue, trend, icon, color }) => (
+            <div className="card p-4 flex items-center justify-between animate-enter">
+                <div>
+                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{title}</h3>
+                    <div className="mt-1 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-gray-800">{value}</span>
+                        {subValue && <span className={`text-sm font-medium ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                            {subValue}
+                        </span>}
+                    </div>
+                </div>
+                <div className={`p-3 rounded-full bg-${color}-100 text-${color}-600 text-2xl`}>
+                    {icon}
+                </div>
+            </div>
+        );
+
+        const MatrizTable = ({ data, prevPeriod, currPeriod, showZeros, compactMode }) => {
+            // Group data by Segment -> Concept -> Period
+            const grouped = useMemo(() => {
+                const map = {};
+
+                // Get all generic concepts to ensure order (UPDATED LIST)
+                const conceptsOrder = [
+                    "1. (+) Total Facturado",
+                    "2. (-) Notas de Crédito (01)",
+                    "3. (+) Nota de Débito (02)",
+                    "4. (-) Devoluciones (03)",
+                    "5. (-) Sustituciones (04)",
+                    "6. Traslado de mercancía (05,06)",
+                    "7. (-) Anticipo (07)",
+                    "8. (-) Pagos Aplicados (08/09)",
+                    "9. (=) Saldo Insoluto PPD",
+                    "9. (=) Saldo Teórico PUE"
+                ];
+
+                data.forEach(item => {
+                    if (!map[item.segmento]) map[item.segmento] = {};
+                    if (!map[item.segmento][item.concepto]) {
+                        map[item.segmento][item.concepto] = {
+                            [prevPeriod]: 0,
+                            [currPeriod]: 0
+                        };
+                    }
+                    map[item.segmento][item.concepto][item.periodo] = item.monto;
+                });
+
+                // Convert to array and sort
+                const result = [];
+                Object.keys(map).sort().forEach(seg => {
+                    const concepts = Object.keys(map[seg]).sort((a, b) => {
+                        const idxA = conceptsOrder.indexOf(a);
+                        const idxB = conceptsOrder.indexOf(b);
+                        // If not found in refined list, put at end
+                        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                    });
+
+                    concepts.forEach(conc => {
+                        const vals = map[seg][conc];
+                        const total = vals[prevPeriod] + vals[currPeriod];
+
+                        // Filter zeros if requested (Default show if forced by backend, but respect toggle)
+                        if (!showZeros && total === 0) return;
+
+                        result.push({
+                            segmento: seg,
+                            concepto: conc,
+                            prev: vals[prevPeriod],
+                            curr: vals[currPeriod],
+                            total: total,
+                            isTotal: conc.includes("(=) Saldo")
+                        });
+                    });
+                });
+                return result;
+            }, [data, prevPeriod, currPeriod, showZeros]);
+
+            return (
+                <div className="card overflow-x-auto animate-enter" style={{ animationDelay: '0.2s' }}>
+                    <table className="fiscal-table">
+                        <thead>
+                            <tr>
+                                <th>Segmento</th>
+                                <th>Concepto Fiscal</th>
+                                <th>{prevPeriod}</th>
+                                <th>{currPeriod}</th>
+                                <th>TOTAL GLOBAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {grouped.map((row, idx) => (
+                                <tr key={idx} className={row.isTotal ? 'row-total' : ''}>
+                                    <td className={row.segmento === 'PPD' ? 'bg-orange-50' : 'bg-teal-50'}>
+                                        <span className={`segment-badge ${row.segmento === 'PPD' ? 'segment-ppd' : 'segment-pue'}`}>
+                                            {row.segmento}
+                                        </span>
+                                    </td>
+                                    <td className="font-medium text-gray-700">{row.concepto}</td>
+
+                                    {[row.prev, row.curr, row.total].map((val, i) => (
+                                        <td key={i} className="text-right font-mono">
+                                            {compactMode ?
+                                                <span className={val >= 0 ? 'text-gray-700' : 'text-red-600'}>
+                                                    {new Intl.NumberFormat('es-MX', { notation: "compact", compactDisplay: "short", maximumFractionDigits: 1 }).format(val)}
+                                                </span>
+                                                :
+                                                <span className={val === 0 ? 'amount-zero' : (val > 0 ? 'amount-pos' : 'amount-neg')}>
+                                                    {new Intl.NumberFormat('es-MX', {
+                                                        style: 'currency',
+                                                        currency: 'MXN',
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2
+                                                    }).format(val)}
+                                                </span>
+                                            }
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        };
+
+        const ChartsSection = ({ data, prevPeriod, currPeriod }) => {
+
+            // Prepare Data for Charts
+            // 1. Total Facturado Comparison (PPD vs PUE)
+            const facturadoData = useMemo(() => {
+                const filterConcept = "1. (+) Total Facturado";
+                const ppdPrev = data.find(d => d.periodo === prevPeriod && d.segmento === 'PPD' && d.concepto === filterConcept)?.monto || 0;
+                const ppdCurr = data.find(d => d.periodo === currPeriod && d.segmento === 'PPD' && d.concepto === filterConcept)?.monto || 0;
+                const puePrev = data.find(d => d.periodo === prevPeriod && d.segmento === 'PUE' && d.concepto === filterConcept)?.monto || 0;
+                const pueCurr = data.find(d => d.periodo === currPeriod && d.segmento === 'PUE' && d.concepto === filterConcept)?.monto || 0;
+
+                return [
+                    { name: prevPeriod, PPD: ppdPrev, PUE: puePrev },
+                    { name: currPeriod, PPD: ppdCurr, PUE: pueCurr }
+                ];
+            }, [data, prevPeriod, currPeriod]);
+
+            // 2. Saldos Finales (Stacked)
+            const saldosData = useMemo(() => {
+                const getSaldo = (per, seg) => {
+                    return data.find(d => d.periodo === per && d.segmento === seg && d.concepto.includes("(=) Saldo"))?.monto || 0;
+                };
+                return [
+                    { name: prevPeriod, PPD: getSaldo(prevPeriod, 'PPD'), PUE: getSaldo(prevPeriod, 'PUE') },
+                    { name: currPeriod, PPD: getSaldo(currPeriod, 'PPD'), PUE: getSaldo(currPeriod, 'PUE') }
+                ];
+            }, [data, prevPeriod, currPeriod]);
+
+            // 3. Composition (Current Period)
+            const compositionData = useMemo(() => {
+                const getSaldo = (per, seg) => {
+                    return data.find(d => d.periodo === per && d.segmento === seg && d.concepto.includes("(=) Saldo"))?.monto || 0;
+                };
+                return [
+                    { name: 'PPD', value: getSaldo(currPeriod, 'PPD') },
+                    { name: 'PUE', value: getSaldo(currPeriod, 'PUE') }
+                ];
+            }, [data, currPeriod]);
+
+            const COLORS = ['#e67e22', '#16a085'];
+
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6 animate-enter" style={{ animationDelay: '0.4s' }}>
+                    <div className="card p-4">
+                        <h4 className="text-sm font-bold text-gray-500 mb-4 uppercase">Facturación Total</h4>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={facturadoData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" />
+                                    <YAxis tickFormatter={(val) => `$${val / 1e6}M`} />
+                                    <Tooltip formatter={(val) => formatCurrency(val)} />
+                                    <Legend />
+                                    <Bar dataKey="PPD" fill="#e67e22" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="PUE" fill="#16a085" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="card p-4">
+                        <h4 className="text-sm font-bold text-gray-500 mb-4 uppercase">Saldos Finales (Apilados)</h4>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={saldosData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" />
+                                    <YAxis tickFormatter={(val) => `$${val / 1e6}M`} />
+                                    <Tooltip formatter={(val) => formatCurrency(val)} />
+                                    <Legend />
+                                    <Bar dataKey="PPD" stackId="a" fill="#e67e22" />
+                                    <Bar dataKey="PUE" stackId="a" fill="#16a085" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="card p-4">
+                        <h4 className="text-sm font-bold text-gray-500 mb-4 uppercase">Composición Saldos ({currPeriod})</h4>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={compositionData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {compositionData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(val) => formatCurrency(val)} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+        const MatrixApp = () => {
+            const [appData, setAppData] = useState(window.data || MOCK_DATA);
+            const [showZeros, setShowZeros] = useState(true);
+            const [compactMode, setCompactMode] = useState(false);
+
+            const { mes_anterior, mes_actual, data } = appData;
+
+            // Calculate overall totals for KPIs
+            const kpis = useMemo(() => {
+                const getSum = (per, concept) =>
+                    data.filter(d => d.periodo === per && d.concepto === concept)
+                        .reduce((sum, item) => sum + item.monto, 0);
+
+                const getSumContains = (per, text) =>
+                    data.filter(d => d.periodo === per && d.concepto.includes(text))
+                        .reduce((sum, item) => sum + item.monto, 0);
+
+                const totalFactCurr = getSum(mes_actual, "1. (+) Total Facturado");
+                const totalFactPrev = getSum(mes_anterior, "1. (+) Total Facturado");
+
+                const totalSaldoCurr = getSumContains(mes_actual, "(=) Saldo");
+                const totalSaldoPrev = getSumContains(mes_anterior, "(=) Saldo");
+
+                const varFact = totalFactPrev ? ((totalFactCurr - totalFactPrev) / totalFactPrev) * 100 : 0;
+
+                return {
+                    facturado: totalFactCurr,
+                    varFact,
+                    saldo: totalSaldoCurr,
+                    nc: getSum(mes_actual, "2. (-) Notas de Crédito (01)")
+                };
+            }, [appData]);
+
+            // Handler for filtering options
+            const toggleZeros = () => setShowZeros(!showZeros);
+            const toggleCompact = () => setCompactMode(!compactMode);
+
+            return (
+                <div className="max-w-7xl mx-auto">
+                    {/* HEADER */}
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 animate-enter">
+                        <div>
+                            <h1 className="text-3xl font-extrabold gradient-text mb-2">Matriz Fiscal CFDI 4.0</h1>
+                            <p className="text-gray-500">
+                                Período Comparativo: <span className="font-semibold text-gray-700">{mes_anterior} vs {mes_actual}</span>
+                            </p>
+                        </div>
+                        <div className="flex gap-3 mt-4 md:mt-0">
+                            <button
+                                onClick={toggleZeros}
+                                className={`btn-premium ${showZeros ? 'opacity-100' : 'opacity-70'}`}
+                                title="Mostrar/Ocultar Ceros"
+                            >
+                                {showZeros ? "👁️" : "🙈"}
+                                {showZeros ? 'Ocultar Ceros' : 'Ver Ceros'}
+                            </button>
+                            <button
+                                onClick={toggleCompact}
+                                className="btn-premium opacity-90"
+                                title="Vista Compacta"
+                            >
+                                <span>📏</span>
+                                {compactMode ? 'Vista Normal' : 'Vista Compacta'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* KPIs */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <StatCard
+                            title="Total Facturado"
+                            value={formatCurrency(kpis.facturado)}
+                            subValue={formatPercent(kpis.varFact)}
+                            trend={kpis.varFact >= 0 ? 'up' : 'down'}
+                            icon="💰"
+                            color="indigo"
+                        />
+                        <StatCard
+                            title="Saldo Total"
+                            value={formatCurrency(kpis.saldo)}
+                            subValue="Final del Período"
+                            trend="neutral"
+                            icon="⚖️"
+                            color="teal"
+                        />
+                        <StatCard
+                            title="Notas de Crédito"
+                            value={formatCurrency(kpis.nc)}
+                            subValue="Total NC (01)"
+                            trend="neutral"
+                            icon="📄"
+                            color="orange"
+                        />
+                    </div>
+
+                    {/* CHARTS */}
+                    <ChartsSection data={data} prevPeriod={mes_anterior} currPeriod={mes_actual} />
+
+                    {/* TABLE */}
+                    <MatrizTable
+                        data={data}
+                        prevPeriod={mes_anterior}
+                        currPeriod={mes_actual}
+                        showZeros={showZeros}
+                        compactMode={compactMode}
+                    />
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MatrixApp />);
+    </script>
+</body>
+
+</html>

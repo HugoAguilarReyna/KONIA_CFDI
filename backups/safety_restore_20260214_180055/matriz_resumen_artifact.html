@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Fiscal Premium</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/classnames/2.3.2/index.min.js"></script>
+
+    <!-- Recharts (CDNJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Date-fns (Fixed CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/dist/date-fns.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --secondary: #a855f7;
+            --secondary-glow: rgba(168, 85, 247, 0.4);
+            --glass: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 24px;
+            overflow-x: hidden;
+        }
+
+        /* --- DECORATIVE BACKGROUND --- */
+        .bg-blobs {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #f8fafc;
+        }
+
+        .blob {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: linear-gradient(135deg, var(--primary-glow) 0%, var(--secondary-glow) 100%);
+            filter: blur(80px);
+            border-radius: 50%;
+            animation: move 20s infinite alternate;
+        }
+
+        .blob-1 {
+            top: -200px;
+            right: -100px;
+        }
+
+        .blob-2 {
+            bottom: -200px;
+            left: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes move {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(50px, 50px) scale(1.1);
+            }
+        }
+
+        /* --- GLASSMORPHISM --- */
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            border-radius: 24px;
+            padding: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px 0 rgba(31, 38, 135, 0.12);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .glass-input:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 2px var(--primary-glow);
+        }
+
+        /* --- PREMIUM ELEMENTS --- */
+        .premium-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: all 0.2s;
+        }
+
+        .premium-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .premium-btn:active {
+            transform: scale(0.98);
+        }
+
+        .filter-chip {
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-chip.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px var(--primary-glow);
+        }
+
+        .filter-chip.inactive {
+            background: rgba(241, 245, 249, 0.8);
+            color: #64748b;
+        }
+
+        /* --- TABLES --- */
+        .fiscal-table-container {
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .fiscal-table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+        }
+
+        .fiscal-table th {
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 10px;
+            padding: 18px;
+            text-align: left;
+            letter-spacing: 0.1em;
+        }
+
+        .fiscal-table td {
+            padding: 16px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13.5px;
+        }
+
+        /* --- ANIMATIONS --- */
+        .fade-in {
+            animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <script>
+        // Global error capture
+        window.onerror = function (msg, url, line) {
+            console.error("Critical Error:", msg, "at", url, ":", line);
+            const root = document.getElementById('root');
+            if (root) {
+                root.innerHTML = `<div style="padding: 40px; text-align: center; font-family: sans-serif;">
+                    <h2 style="color: #ef4444;">⚠️ Error de Carga</h2>
+                    <p style="color: #64748b;">${msg}</p>
+                    <p style="font-size: 0.8rem; color: #94a3b8;">Línea: ${line}</p>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; border-radius: 8px; background: #6366f1; color: white; border: none; cursor: pointer;">
+                        Reintentar
+                    </button>
+                </div>`;
+            }
+        };
+    </script>
+</head>
+
+<body>
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useCallback } = React;
+        const {
+            BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+            XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            AreaChart, Area
+        } = window.Recharts || {};
+
+        // --- MOCK DATA ---
+        const MOCK_DATA = {
+            data: [],
+            label: "Sin Datos"
+        };
+
+        // --- ICON WRAPPER ---
+        const Icon = ({ name, className }) => {
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} className={className}></i>;
+        };
+
+        // --- ERROR BOUNDARY ---
+        class ErrorBoundary extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="glass-card m-10 text-center">
+                            <h2 className="text-xl font-black text-rose-500 mb-2">Error en el Dashboard</h2>
+                            <p className="text-slate-500 mb-4">{this.state.error?.message}</p>
+                            <button onClick={() => window.location.reload()} className="premium-btn mx-auto">Recargar</button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+
+
+        // --- FORMATTERS ---
+        const formatCurrency = (val) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val);
+
+        const MatrixApp = () => {
+            const [rawPayload] = useState(() => {
+                console.log("Initializing App Data...", window.data);
+                return window.data || MOCK_DATA;
+            });
+            // 1. Filtering - SIMPLIFIED: Data is already filtered by Python Backend (app.py)
+            // We just use rawPayload.data directly, but keep the structure for potential client-side search if needed later.
+            const filteredData = useMemo(() => {
+                if (!rawPayload.data) return [];
+                return rawPayload.data;
+            }, [rawPayload]);
+
+            // 2. Aggregating
+            const processedData = useMemo(() => {
+                const helper = window.dateFns || {
+                    getWeek: () => 1,
+                    format: (d) => String(d).slice(0, 10)
+                };
+
+                if (!window.dateFns) console.warn("date-fns not loaded, using fallback formatters");
+
+                const groups = {};
+                filteredData.forEach(item => {
+                    const d = new Date(item.fecha);
+                    let key = 'N/A';
+                    try {
+                        if (rawPayload.grouping === 'day') key = item.fecha;
+                        else if (rawPayload.grouping === 'week') key = `W${helper.getWeek(d, { weekStartsOn: 1 })}-${helper.format(d, 'yy')}`;
+                        else key = String(item.fecha).substring(0, 7);
+                    } catch (e) { key = String(item.fecha); }
+
+                    if (!groups[key]) groups[key] = { name: key, PPD: 0, PUE: 0, NC: 0, Pagos: 0, Total: 0 };
+
+                    const val = Number(item.monto) || 0;
+                    if (item.segmento === 'PPD') groups[key].PPD += val;
+                    else if (item.segmento === 'PUE') groups[key].PUE += val;
+
+                    if (String(item.concepto).includes('Notas de Crédito')) groups[key].NC += Math.abs(val);
+                    if (String(item.concepto).includes('Pagos Aplicados')) groups[key].Pagos += Math.abs(val);
+
+                    groups[key].Total += val;
+                });
+
+                return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+            }, [filteredData]);
+
+            const kpis = useMemo(() => {
+                let facturado = 0, ppd = 0, pue = 0, nc = 0;
+                filteredData.forEach(i => {
+                    const val = Number(i.monto) || 0;
+                    if (String(i.concepto).includes('Facturado')) facturado += val;
+                    if (i.segmento === 'PPD') ppd += val;
+                    if (i.segmento === 'PUE') pue += val;
+                    if (String(i.concepto).includes('Notas de Crédito')) nc += Math.abs(val);
+                });
+                return { facturado, ppd, pue, nc };
+            }, [filteredData]);
+
+            return (
+                <div className="max-w-[1600px] mx-auto pb-20">
+                    <header className="mb-8 flex items-center justify-between fade-in px-4 md:px-0">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                <Icon name="bar-chart-3" className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">Matriz Fiscal <span className="text-indigo-600">Premium</span></h1>
+                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Análisis en Tiempo Real</p>
+                            </div>
+                        </div>
+                    </header>
+
+
+
+                    {/* MAIN CONTENT Area - FULL WIDTH */}
+                    <div className="w-full space-y-8 fade-in">
+
+                        {/* KPIS */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <StatItem label="Ingresos Totales" value={formatCurrency(kpis.facturado)} icon="credit-card" color="indigo" />
+                            <StatItem label="Segmento PPD" value={formatCurrency(kpis.ppd)} icon="clock" color="amber" />
+                            <StatItem label="Segmento PUE" value={formatCurrency(kpis.pue)} icon="zap" color="emerald" />
+                            <StatItem label="Créditos/NC" value={formatCurrency(kpis.nc)} icon="file-minus" color="rose" />
+                        </div>
+
+                        {/* CHARTS ROW */}
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <div className="glass-card">
+                                <h3 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-4 bg-amber-400 rounded-full"></div> Distribución PPD vs PUE
+                                </h3>
+                                <div className="h-[300px]">
+                                    {ResponsiveContainer && BarChart ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={processedData}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="name" fontSize={10} fontWeight={700} axisLine={false} tickLine={false} dy={10} tick={{ fill: '#94a3b8' }} />
+                                                <YAxis fontSize={9} fontWeight={700} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} tick={{ fill: '#94a3b8' }} />
+                                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99,102,241,0.05)' }} />
+                                                <Legend verticalAlign="top" align="right" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                                                <Bar dataKey="PPD" name="PPD" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="PUE" name="PUE" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : <div className="h-full flex items-center justify-center text-slate-400 text-xs">Gráfico no disponible</div>}
+                                </div>
+                            </div>
+
+                            <div className="glass-card">
+                                <h3 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-4 bg-indigo-500 rounded-full"></div> Evolución de Saldos
+                                </h3>
+                                <div className="h-[300px]">
+                                    {ResponsiveContainer && AreaChart ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={processedData}>
+                                                <defs>
+                                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="name" fontSize={10} fontWeight={700} axisLine={false} tickLine={false} dy={10} tick={{ fill: '#94a3b8' }} />
+                                                <YAxis fontSize={9} fontWeight={700} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} tick={{ fill: '#94a3b8' }} />
+                                                <Tooltip content={<CustomTooltip />} />
+                                                <Area type="monotone" dataKey="Total" name="Saldo Neto" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
+                                                <Line type="monotone" dataKey="NC" name="Retornos" stroke="#ef4444" strokeWidth={2} dot={false} strokeDasharray="6 6" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : <div className="h-full flex items-center justify-center text-slate-400 text-xs">Gráfico no disponible</div>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* FINANCIAL MATRIX TABLE */}
+                        <div className="glass-card fade-in">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-4 bg-slate-800 rounded-full"></div> Matriz Financiera Detallada
+                                </h3>
+                                <button onClick={() => {
+                                    const table = document.getElementById('financial-table');
+                                    if (table) {
+                                        const range = document.createRange();
+                                        range.selectNode(table);
+                                        window.getSelection().removeAllRanges();
+                                        window.getSelection().addRange(range);
+                                        document.execCommand('copy');
+                                        window.getSelection().removeAllRanges();
+                                        alert('Tabla copiada al portapapeles');
+                                    }
+                                }} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full transition-colors cursor-pointer">
+                                    Copiar Tabla
+                                </button>
+                            </div>
+
+                            <div className="fiscal-table-container max-h-[800px] overflow-auto custom-scrollbar shadow-xl rounded-xl border border-slate-200">
+                                <table id="financial-table" className="w-full text-xs box-border">
+                                    <thead className="sticky top-0 z-20 shadow-md">
+                                        <tr className="bg-[#6366f1] text-white"> {/* Header color matched to screenshot purple/indigo */}
+                                            <th className="px-4 py-3 text-left font-bold uppercase tracking-wider w-24">SEGMENTO</th>
+                                            <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">CONCEPTO FISCAL</th>
+                                            {processedData.map(p => (
+                                                <th key={p.name} className="px-4 py-3 text-right font-bold uppercase tracking-wider bg-[#5b5ee0]">{p.name}</th>
+                                            ))}
+                                            <th className="px-4 py-3 text-right font-black uppercase tracking-wider bg-[#4f46e5]">TOTAL GLOBAL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white">
+                                        {['PPD', 'PUE'].map(segmento => {
+                                            const isPPD = segmento === 'PPD';
+                                            const bgSegment = isPPD ? 'bg-[#fff7ed]' : 'bg-[#ecfdf5]'; // orange-50 : emerald-50
+                                            const textSegment = isPPD ? 'text-orange-600' : 'text-emerald-600';
+                                            const badgeClass = isPPD ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700';
+
+                                            const conceptsOrder = [
+                                                '1. (+) Total Facturado',
+                                                '2. (-) Notas de Crédito (01)',
+                                                '3. (+) Nota de Débito (02)',
+                                                '4. (-) Devoluciones (03)',
+                                                '5. (-) Sustituciones (04)',
+                                                '6. Traslado de mercancía (05,06)',
+                                                '7. (-) Anticipo (07)',
+                                                '8. (-) Pagos Aplicados (08/09)',
+                                                '9. (=) Saldo Insoluto'
+                                            ];
+
+                                            const segmentRows = conceptsOrder.map(conceptLabel => {
+                                                const rowData = processedData.map(period => {
+                                                    const matches = filteredData.filter(d => {
+                                                        const pKey = String(d.fecha).substring(0, 7);
+                                                        return pKey === period.name &&
+                                                            d.segmento === segmento &&
+                                                            d.concepto.startsWith(conceptLabel.substring(0, 4)); // Match by prefix "1. ", "5. " etc
+                                                    });
+
+                                                    const sum = matches.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
+
+                                                    // Sign logic
+                                                    let signedVal = sum;
+                                                    if (conceptLabel.includes('(-)')) signedVal = -Math.abs(sum);
+
+                                                    return signedVal;
+                                                });
+
+                                                const totalRow = rowData.reduce((a, b) => a + b, 0);
+                                                return { label: conceptLabel, values: rowData, total: totalRow, isSaldo: false };
+                                            });
+
+                                            // Calculate Saldo
+                                            const saldoValues = processedData.map((_, idx) => {
+                                                return segmentRows.reduce((acc, row) => acc + row.values[idx], 0);
+                                            });
+                                            const saldoTotal = saldoValues.reduce((a, b) => a + b, 0);
+
+                                            segmentRows[segmentRows.length - 1] = {
+                                                label: isPPD ? '9. (=) Saldo Insoluto PPD' : '9. (=) Saldo Teórico PUE',
+                                                values: saldoValues,
+                                                total: saldoTotal,
+                                                isSaldo: true
+                                            };
+
+                                            return segmentRows.map((row, rIdx) => (
+                                                <tr key={`${segmento}-${rIdx}`} className={`border-b border-slate-100 hover:brightness-95 transition-all ${bgSegment}`}>
+                                                    {/* Segment Column - Only first row of segment gets label, others empty but colored */}
+                                                    <td className="px-4 py-2 border-r border-slate-200/50">
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${badgeClass}`}>
+                                                            {segmento}
+                                                        </span>
+                                                    </td>
+
+                                                    <td className={`px-4 py-2 text-slate-700 font-medium ${row.isSaldo ? 'font-black' : ''}`}>
+                                                        {row.label}
+                                                    </td>
+
+                                                    {row.values.map((v, cIdx) => (
+                                                        <td key={cIdx} className={`px-4 py-2 text-right font-mono font-bold ${v < 0 ? 'text-rose-500' : (v > 0 ? 'text-emerald-500' : 'text-slate-300')} ${row.isSaldo ? (v < 0 ? 'text-rose-600' : 'text-slate-600') : ''}`}>
+                                                            {formatCurrency(v)}
+                                                        </td>
+                                                    ))}
+
+                                                    <td className={`px-4 py-2 text-right font-mono font-black ${row.total < 0 ? 'text-rose-600' : (row.total > 0 ? 'text-emerald-600' : 'text-slate-400')}`}>
+                                                        {formatCurrency(row.total)}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
+        const StatItem = ({ label, value, icon, color }) => {
+            const colors = {
+                indigo: 'bg-indigo-50 text-indigo-600 from-indigo-500/20',
+                emerald: 'bg-emerald-50 text-emerald-600 from-emerald-500/20',
+                amber: 'bg-amber-50 text-amber-600 from-amber-500/20',
+                rose: 'bg-rose-50 text-rose-600 from-rose-500/20'
+            };
+            return (
+                <div className="glass-card flex items-center justify-between group p-6">
+                    <div>
+                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1 transition-colors group-hover:text-slate-500">{label}</p>
+                        <h2 className="text-xl font-black text-slate-800 tracking-tighter">{value}</h2>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 ${colors[color]}`}>
+                        <Icon name={icon} className="w-5 h-5" />
+                    </div>
+                </div>
+            );
+        };
+
+        const CustomTooltip = ({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+                return (
+                    <div className="glass-card !p-5 !rounded-3xl !bg-white/95 shadow-2xl border-indigo-100 min-w-[240px]">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3">{label}</p>
+                        <div className="flex flex-col gap-3">
+                            {payload.map((p, i) => (
+                                <div key={i} className="flex justify-between items-center gap-6">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }}></div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase">{p.name}</span>
+                                    </div>
+                                    <span className="text-sm font-black text-slate-800">{formatCurrency(p.value)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+            return null;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ErrorBoundary><MatrixApp /></ErrorBoundary>);
+    </script>
+</body>
+
+</html>

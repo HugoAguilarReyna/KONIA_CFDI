@@ -42,7 +42,8 @@ const DetalleUUIDView = () => {
         kpis: { total_uuids: 0, saldo_total: 0, promedio_saldo: 0, ratio_emit_recib: 0 },
         distribucion: {},
         top10: [],
-        total: 0
+        total: 0,
+        waterfall: {}
     });
     const [loading, setLoading] = useState(true);
     const [searchUUID, setSearchUUID] = useState('');
@@ -93,7 +94,8 @@ const DetalleUUIDView = () => {
                     kpis: result.kpis || { total_uuids: 0, saldo_total: 0, promedio_saldo: 0, ratio_emit_recib: 0 },
                     distribucion: result.distribucion || {},
                     top10: result.top10 || [],
-                    total: result.total || 0
+                    total: result.total || 0,
+                    waterfall: result.waterfall || {}
                 });
             } catch (error) {
                 console.error("Error fetching detail data:", error);
@@ -605,23 +607,27 @@ const DetalleUUIDView = () => {
     const maxFact = Math.max(...registros.map(r => r.conceptos?.["1. (+) Total Facturado"] || 0), 0);
 
     // Waterfall Data
-    const calcularWaterfall = (registros) => {
+    const calcularWaterfall = (registros, globalWaterfall = {}) => {
         const totales = {
-            facturado: 0,
-            notas: 0,
-            devoluciones: 0,
-            anticipo: 0,
-            pagos: 0,
-            saldo: 0
+            facturado: globalWaterfall["1. (+) Total Facturado"] || 0,
+            notas: globalWaterfall["2. (-) Notas de Crédito (01)"] || 0,
+            devoluciones: globalWaterfall["4. (-) Devoluciones (03)"] || 0,
+            anticipo: globalWaterfall["7. (-) Anticipo (07)"] || 0,
+            pagos: globalWaterfall["8. (-) Pagos Aplicados (08/09)"] || 0,
+            saldo: globalWaterfall["saldo_neto"] || 0
         };
-        registros.forEach(r => {
-            totales.facturado += r.conceptos?.["1. (+) Total Facturado"] || 0;
-            totales.notas += r.conceptos?.["2. (-) Notas de Crédito (01)"] || 0;
-            totales.devoluciones += r.conceptos?.["4. (-) Devoluciones (03)"] || 0;
-            totales.anticipo += r.conceptos?.["7. (-) Anticipo (07)"] || 0;
-            totales.pagos += r.conceptos?.["8. (-) Pagos Aplicados (08/09)"] || 0;
-            totales.saldo += r.saldo_acumulado;
-        });
+
+        // Fallback to current batch if globalWaterfall is empty (legacy support or loading)
+        if (Object.keys(globalWaterfall).length === 0 && registros.length > 0) {
+            registros.forEach(r => {
+                totales.facturado += r.conceptos?.["1. (+) Total Facturado"] || 0;
+                totales.notas += r.conceptos?.["2. (-) Notas de Crédito (01)"] || 0;
+                totales.devoluciones += r.conceptos?.["4. (-) Devoluciones (03)"] || 0;
+                totales.anticipo += r.conceptos?.["7. (-) Anticipo (07)"] || 0;
+                totales.pagos += r.conceptos?.["8. (-) Pagos Aplicados (08/09)"] || 0;
+                totales.saldo += r.saldo_acumulado;
+            });
+        }
 
         let acumulado = totales.facturado;
         return [
@@ -673,7 +679,7 @@ const DetalleUUIDView = () => {
             }
         ];
     };
-    const waterfallData = calcularWaterfall(registros);
+    const waterfallData = calcularWaterfall(data.registros, data.waterfall);
 
     return (
         <div style={{ paddingBottom: "40px" }}>
