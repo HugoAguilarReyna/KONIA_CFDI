@@ -12,13 +12,32 @@ import hashlib
 from streamlit_option_menu import option_menu # Import Option Menu
 import textwrap # For dedenting HTML strings
 import audit_module # Moved to top
+from matriz_resumen_module import render_matriz_resumen_artifact, load_dim_tiempo
+from utils_ui import render_detalle_uuid_inline
+from sidebar_premium import inject_sidebar_css
+from fecha_filter_fixed import filtro_fecha_con_calendario
+import reporte_v2_detalle_uuid
+import trazabilidad_module
+
+# --- GLOBALS ---
+month_labels = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
+
+
+
+
 
 # ============================================================================
 # CONFIGURACIÓN DE SUBMENÚS PREMIUM
 # ============================================================================
 SUBMENU_CONFIG = {
     "Cuenta T": [
-        {"label": "KPIs Operativos", "key": "kpis"},
+        {"label": "KPIS", "key": "kpis"},
+        {"label": "Detalle UUID", "key": "detalle_uuid"},
+        {"label": "Analítica", "key": "analitica"},
+        {"label": "Prellenado", "key": "prellenado"},
         {"label": "Análisis Estructural", "key": "estructural"},
         {"label": "Tendencias", "key": "tendencias"}
     ],
@@ -51,6 +70,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded" # Force expanded to ensure DOM presence for stealth buttons
 )
+
+inject_sidebar_css()
+
+
+
 
 # --- GLOBAL SETTINGS ---
 st.markdown("""
@@ -214,6 +238,56 @@ def render_futuristic_header():
         transition: margin-left 0.3s ease; /* Smooth transition for content push */
     }
 
+    /* Reduce white space above tabs */
+    div[data-testid="stTabs"] {
+        margin-top: 10px !important;
+    }
+
+    /* PREMIUM PILL TABS - Inspired by Image 2 */
+    button[data-testid="stTab"] {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 50px !important;
+        padding: 6px 24px !important;
+        margin-right: 12px !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        min-width: 140px !important;
+        height: 42px !important;
+    }
+
+    button[data-testid="stTab"][aria-selected="true"] {
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    button[data-testid="stTab"] p {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        color: inherit !important;
+    }
+
+    button[data-testid="stTab"][aria-selected="false"]:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: #6366f1 !important;
+        color: #6366f1 !important;
+    }
+
+    /* Hide the default Streamlit underline */
+    div[data-testid="stTab"] div[data-testid="stMarkdownContainer"] + div {
+        display: none !important;
+    }
+
+    div[data-testid="stTabList"] {
+        gap: 0px !important;
+        background-color: transparent !important;
+        border-bottom: none !important;
+        padding-bottom: 20px !important;
+    }
+
     div[data-testid="stVerticalBlock"]:has(#sticky-header-anchor) {
         position: static !important;
         overflow: visible !important;
@@ -254,44 +328,26 @@ def render_futuristic_header():
         background: var(--color-primary);
     }
 
-    /* --- CUSTOM SIDEBAR CSS --- */
-    /* Target the container we will use as sidebar */
-    /* We use :not(:has(...)) to ensure we select the LEAF container (the sidebar itself) 
-       and NOT the parent main container which also "has" the marker recursively. */
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) {
-        position: fixed;
-        top: 0;
-        left: -320px; /* Hidden by default */
-        width: 320px;
-        height: 100vh;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* PREMIUM PURPLE GRADIENT */
-        border-right: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 4px 0 15px rgba(0,0,0,0.2);
-        z-index: 999999;
-        transition: left 0.3s ease;
-        padding: 20px;
-        padding-top: 60px; /* Space for top */
-        overflow-y: visible !important; /* Forces clip fix for children */
-        color: #FFFFFF !important; /* Force white text */
-    }
+    /* --- CUSTOM SIDEBAR CSS (Handled by sidebar_premium.py) --- */
+    #filter-sidebar-marker { display: none; }
 
-    /* Force all text elements inside sidebar to be white */
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) p,
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) span,
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) label,
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) h1,
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) h2,
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) h3,
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])) div {
-        color: #FFFFFF !important;
+    /* 10. Premium Sidebar Elements */
+    .premium-filter-container {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 15px;
+        margin-top: 10px;
+        backdrop-filter: blur(10px);
     }
-
-    /* Open State Class (toggled via JS) */
-    div[data-testid="stVerticalBlock"]:has(#filter-sidebar-marker):not(:has([data-testid="stVerticalBlock"])).sidebar-open {
-        left: 0;
+    .premium-filter-container label {
+        color: #E2E8F0 !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     </style>
-
     """, unsafe_allow_html=True)
 
     # --- BOTÓN PREMIUM DE ÚLTIMA GENERACIÓN ---
@@ -405,10 +461,7 @@ def render_futuristic_header():
 
                 // LÓGICA DE CLIC (Ripple + Toggle + Vibrate)
                 btn.onclick = function(e) {
-                    // Feedback Háptico
                     if (navigator.vibrate) navigator.vibrate(10);
-
-                    // Efecto Ripple
                     const ripple = doc.createElement('span');
                     ripple.className = 'ripple';
                     btn.appendChild(ripple);
@@ -419,19 +472,22 @@ def render_futuristic_header():
                     ripple.style.top = `${e.clientY - rect.top - size/2}px`;
                     setTimeout(() => ripple.remove(), 600);
 
-                    // Toggle del Sidebar
                     const marker = doc.getElementById('filter-sidebar-marker');
                     if (marker) {
                         const sidebar = marker.closest('[data-testid="stVerticalBlock"]');
-                        const mainContent = doc.querySelector('.block-container');
                         if (sidebar) {
+                            // First ensure class is synced before toggling
+                            if (!sidebar.classList.contains('actual-filter-sidebar')) {
+                                sidebar.classList.add('actual-filter-sidebar');
+                            }
                             sidebar.classList.toggle('sidebar-open');
                             const isOpen = sidebar.classList.contains('sidebar-open');
                             btn.style.left = isOpen ? '320px' : '0px';
+                            const mainContent = doc.querySelector('.block-container');
                             if (mainContent) {
                                 mainContent.style.marginLeft = isOpen ? '320px' : '0';
                                 mainContent.style.width = isOpen ? 'calc(100% - 320px)' : '100%';
-                                mainContent.style.transition = 'margin-left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                                mainContent.style.transition = 'margin-left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)';
                             }
                         }
                     }
@@ -440,11 +496,24 @@ def render_futuristic_header():
                 doc.body.appendChild(btn);
             }
 
-            // MANTENIMIENTO DEL BOTÓN (Teleport Pattern)
+            function syncSidebarClass() {
+                const marker = doc.getElementById('filter-sidebar-marker');
+                if (marker) {
+                    const sidebar = marker.closest('[data-testid="stVerticalBlock"]');
+                    if (sidebar && !sidebar.classList.contains('actual-filter-sidebar')) {
+                        sidebar.classList.add('actual-filter-sidebar');
+                    }
+                }
+            }
+
             createBtn();
-            setInterval(createBtn, 1000);
+            setInterval(() => {
+                createBtn();
+                syncSidebarClass();
+            }, 1000);
         })();
     </script>
+
     """, height=0, width=0)
 
 
@@ -526,6 +595,13 @@ def load_data(company_id):
             df['year'] = df['fecha_emision'].dt.year
             df['week'] = df['fecha_emision'].dt.to_period('W').astype(str)
             df['ventas_netas_calc'] = (df['subtotal'] + df['calc_iva']) - (df['calc_retenciones'] + df['descuento'])
+
+            # --- JOIN WITH DIM_TIEMPO ---
+            df_tiempo = load_dim_tiempo()
+            if not df_tiempo.empty:
+                # rename month to periodo to match dim_tiempo if needed, 
+                # but we already created 'month' which is YYYY-MM
+                df = df.merge(df_tiempo, left_on='month', right_on='periodo', how='left', suffixes=('', '_dim'))
 
         # 2. Enforce Numeric Columns (Critical for Calculations)
         numeric_cols = ['subtotal', 'total', 'descuento', 'calc_iva', 'calc_ieps', 'calc_ret_isr', 'calc_ret_iva', 'calc_retenciones', 'calc_traslados']
@@ -674,6 +750,7 @@ if st.session_state.authenticated:
     # --- LOAD DATA ---
     df = load_data(st.session_state.company_id)
     df_conceptos = load_conceptos()
+    df_tiempo = load_dim_tiempo()
 
     if df is not None and not df.empty:
         # --- ENRICHMENT: JOIN WITH CATALOGS ---
@@ -728,13 +805,69 @@ if st.session_state.authenticated:
         
         st.markdown("### FILTROS")
         st.markdown("---")
+
+        # --- EMPTY STATE CHECK ---
+        if df.empty:
+            st.error("⚠️ SISTEMA SIN DATOS: No hay registros disponibles para filtrar. Verifique la conexión a MongoDB o el ID de Empresa.")
+            st.stop()
         
         # --- FILTERS CONTENT ---
+        # 1. Tipo de Comprobante
         if 'tipo' in df.columns:
-            tipo_opts = df['tipo'].unique()
-            selected_tipo = st.multiselect("Tipo Comprobante", tipo_opts, default=tipo_opts)
+            tipo_opts = sorted(df['tipo'].astype(str).unique())
+            tipo_mapping = {
+                "I": "Ingreso",
+                "E": "Egreso",
+                "N": "Nómina",
+                "P": "Pago",
+                "T": "Traslado"
+            }
+            # V10: Use Pills for Premium Look
+            selected_tipo = st.pills(
+                "Tipo Comprobante", 
+                options=tipo_opts, 
+                format_func=lambda x: tipo_mapping.get(x.upper(), x),
+                selection_mode="multi", 
+                default=tipo_opts
+            )
         else:
             selected_tipo = []
+
+        st.markdown("---")
+
+        # 2. Método de Pago
+        if 'metodo_pago' in df.columns:
+            metodo_opts = sorted(df['metodo_pago'].astype(str).unique())
+            metodo_mapping = {
+                "PUE": "PUE (Pago Una Exhib.)",
+                "PPD": "PPD (Pago Diferido)",
+                "NAN": "Otros"
+            }
+            # V10: Use Pills for Premium Look
+            selected_metodo = st.pills(
+                "Método de Pago", 
+                options=metodo_opts, 
+                format_func=lambda x: metodo_mapping.get(x.upper(), x),
+                selection_mode="multi", 
+                default=metodo_opts
+            )
+        else:
+            selected_metodo = []
+
+        # 3. Uso de CFDI
+        if 'uso_cfdi' in df.columns:
+            uso_opts = sorted(df['uso_cfdi'].astype(str).unique())
+            selected_uso = st.multiselect("Uso de CFDI", uso_opts, default=uso_opts)
+        else:
+            selected_uso = []
+            
+        # 4. Régimen Fiscal (Receptor)
+        if 'receptor_regimen_fiscal' in df.columns:
+            regimen_opts = sorted(df['receptor_regimen_fiscal'].astype(str).unique())
+            selected_regimen = st.multiselect("Régimen Fiscal (Receptor)", regimen_opts, default=regimen_opts)
+        else:
+            selected_regimen = []
+
 
         st.markdown("---")
         
@@ -744,25 +877,66 @@ if st.session_state.authenticated:
         
         st.markdown("---")
         
-        # Date Range Filter
+        # --- PREMIUM TIME SELECTOR (Calendar) ---
         if not df.empty and 'fecha_emision' in df.columns:
-            min_date = df['fecha_emision'].min().date()
-            max_date = df['fecha_emision'].max().date()
-            date_range = st.date_input("Rango de Fechas", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+             # Calculate reasonable defaults from data
+            min_year = int(df['fecha_emision'].dt.year.min())
+            max_year = int(df['fecha_emision'].dt.year.max())
+            default_year = max_year
+            
+            periodo = filtro_fecha_con_calendario(
+                label="Período Fiscal",
+                year_min=min(2020, min_year),
+                year_max=max(2026, max_year),
+                df_tiempo=df_tiempo
+            )
+
+            # --- EXTRACT SELECTION ---
+            if periodo.get("mode") == "range":
+                sel_year = periodo['start_year']
+                sel_month = periodo['start_month']
+                sel_year_end = periodo.get('end_year', sel_year)
+                sel_month_end = periodo.get('end_month', sel_month)
+                
+                start_date = pd.Timestamp(year=sel_year, month=sel_month, day=1).date()
+                end_date = (pd.Timestamp(year=sel_year_end, month=sel_month_end, day=1) + pd.offsets.MonthEnd(0)).date()
+                date_range = (start_date, end_date)
+            else:
+                sel_year = periodo.get('year', 2025)
+                sel_month = periodo.get('month', 1)
+                sel_year_end = sel_year
+                sel_month_end = sel_month
+                
+                start_date = pd.Timestamp(year=sel_year, month=sel_month, day=1).date()
+                end_date = (pd.Timestamp(year=sel_year, month=sel_month, day=1) + pd.offsets.MonthEnd(0)).date()
+                date_range = (start_date, end_date)
+            
         else:
+            sel_year = 2025
+            sel_month = 1
             date_range = []
 
+
+
     # --- APPLY FILTERS ---
-    # Default mask (all true)
     mask = pd.Series([True] * len(df))
     
     if selected_tipo:
-        mask = mask & (df['tipo'].isin(selected_tipo))
+        mask &= (df['tipo'].astype(str).isin(selected_tipo))
+    
+    if selected_metodo:
+        mask &= (df['metodo_pago'].astype(str).isin(selected_metodo))
         
-    # Apply Date Filter
+    if selected_uso:
+        mask &= (df['uso_cfdi'].astype(str).isin(selected_uso))
+        
+    if selected_regimen:
+        mask &= (df['receptor_regimen_fiscal'].astype(str).isin(selected_regimen))
+        
+        
     if len(date_range) == 2:
         start_date, end_date = date_range
-        mask = mask & (df['fecha_emision'].dt.date >= start_date) & (df['fecha_emision'].dt.date <= end_date)
+        mask &= (df['fecha_emision'].dt.date >= start_date) & (df['fecha_emision'].dt.date <= end_date)
         
     df_filtered = df.loc[mask]
 
@@ -1271,8 +1445,6 @@ def render_footer_ghost_buttons(active_mod, active_sub):
 # --- EXECUTE NAVIGATION ---
 selected_module, selected_subtab = render_premium_navbar()
 
-
-
 # Validar cambio de módulo para resetear subtab si fuera necesario
 if selected_module in SUBMENU_CONFIG and not selected_subtab:
     selected_subtab = SUBMENU_CONFIG[selected_module][0]["key"]
@@ -1296,6 +1468,9 @@ def render_stat_element(label, value, sub_label, color="var(--text-primary)"):
         </div>
     """, unsafe_allow_html=True)
 
+
+
+# --- QUANTUM KPI RENDERING (Original) ---
 def render_quantum_kpis(q1, q2, q3, q4, q5):
     """
     Renders the Quantum KPI Strip (Q1-Q5) with Crystal Prism aesthetics.
@@ -1355,11 +1530,21 @@ def render_quantum_kpis(q1, q2, q3, q4, q5):
         }
         .quantum-value {
             color: #2B3674;
-            font-family: 'DM Sans', sans-serif;
             font-size: 24px;
             font-weight: 700;
-            line-height: 1.2;
+            margin-bottom: 5px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.5px;
         }
+        .quantum-delta {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .delta-pos { background: rgba(5, 205, 153, 0.1); color: #05CD99; }
+        .delta-neg { background: rgba(238, 93, 80, 0.1); color: #EE5D50; }
         </style>
     """, unsafe_allow_html=True)
     
@@ -1387,6 +1572,7 @@ def render_quantum_kpis(q1, q2, q3, q4, q5):
             </div>
         </div>
     """, unsafe_allow_html=True)
+
 
 # --- METRIC HELPER (Legacy) ---
 def render_custom_metric(label, value, prefix="", suffix="", delta="", delta_color="normal"):
@@ -1528,8 +1714,7 @@ def render_invoice_html(row, conceptos_df):
 
 
 # --- VIEW CONTROLLER ---
-render_futuristic_header()
-selected_module, selected_subtab = render_premium_navbar()
+# selected_module already handled below
 
 if selected_module == "Configuración":
     st.markdown('<div class="section-header">PERFIL DE USUARIO</div>', unsafe_allow_html=True)
@@ -1583,11 +1768,78 @@ elif selected_module == "Cuenta T":
         with s4: render_stat_element("Promedio", f"${avg:,.2f}", "Mean Density")
 
         # LÍNEA DIVISORIA
+        # LÍNEA DIVISORIA
         st.markdown("<hr class='custom-hr'>", unsafe_allow_html=True)
+        
+        # --- SECCIÓN: ANÁLISIS DE CONCENTRACIÓN (TOP 10) - (MOVIDO DE TENDENCIAS PARA RELLENAR KPI) ---
+        st.markdown("<div class='section-header'>Top 10 Clientes</div>", unsafe_allow_html=True)
+        entity_col = 'receptor_nombre' if 'receptor_nombre' in df_filtered.columns else 'receptor_id'
+        if not df_filtered.empty:
+            top10 = df_filtered.groupby(entity_col)['total'].sum().nlargest(10).reset_index()
+            top10 = top10.sort_values('total', ascending=True) 
+            st.dataframe(top10, use_container_width=True, hide_index=True)
 
-        # --- SECCIÓN: ANÁLISIS DE SEGMENTACIÓN POR QUINTILES (VERSIÓN ULTRA-IMPACT) ---
-        st.markdown("<div class='section-header'>Segmentación y Concentración de Capital</div>", unsafe_allow_html=True)
 
+    # --- SUB-TAB: DETALLE UUID ---
+    elif selected_subtab == "detalle_uuid":
+        # Initialize Fiscal Reports DB
+        mongo_uri = os.getenv("MONGO_URI")
+        client_fiscal = pymongo.MongoClient(mongo_uri)
+        db_fiscal = client_fiscal['fiscal_reports']
+
+        # --- VISTA HÍBRIDA: TABS ---
+        tab_resumen, tab_detalle, tab_trace = st.tabs([
+            "Matriz Resumen", 
+            "Detalle UUID",
+            "Trazabilidad UUID"
+        ])
+        
+        # 1. Determinar periodo_str (Mensual vs Rango vs Anual)
+        if sel_month == 0:
+            periodo_str = f"Anual {sel_year}"
+        elif 'sel_year_end' in locals() and (sel_year != sel_year_end or sel_month != sel_month_end):
+            # Generar lista de meses para el rango
+            start_p = pd.Period(f"{sel_year}-{sel_month:02d}", freq='M')
+            end_p = pd.Period(f"{sel_year_end}-{sel_month_end:02d}", freq='M')
+            periodo_str = [p.strftime('%Y-%m') for p in pd.period_range(start_p, end_p)]
+        else:
+            periodo_str = f"{sel_year}-{sel_month:02d}"
+
+        with tab_resumen:
+            try:
+                # Improvement: Dynamic label for range mode
+                if 'sel_year_end' in locals() and (sel_year != sel_year_end or sel_month != sel_month_end):
+                    period_label = f"{sel_year}-{sel_month:02d} a {sel_year_end}-{sel_month_end:02d}"
+                else:
+                    period_label = f"{sel_year}-{sel_month:02d}" if sel_month != 0 else f"Anual {sel_year}"
+                
+                render_matriz_resumen_artifact(df_filtered, periodo_label=period_label, grouping=time_agg_code, year=sel_year, month=sel_month, year_end=sel_year_end, month_end=sel_month_end)
+            except Exception as e:
+                st.error(f"Error renderizando Matriz Resumen: {e}")
+        
+        with tab_detalle:
+            # ORIGINAL REFAC TO MONGO: Fetch data using the same logic as the simplified tab
+            try:
+                df_mongo = reporte_v2_detalle_uuid.obtener_datos_detalle_uuid(
+                    db_fiscal, 
+                    periodo_str, 
+                    company_id=st.session_state.get('company_id')
+                )
+                render_detalle_uuid_inline(df_mongo, sel_year, sel_month, month_labels)
+            except Exception as e:
+                st.error(f"Error en Detalle Transaccional (Mongo): {e}")
+
+        with tab_trace:
+            # NUEVO: Trazabilidad UUID Premium
+            try:
+                trazabilidad_module.render_trazabilidad_tab(db_fiscal, company_id=2)
+            except Exception as e:
+                st.error(f"Error en Trazabilidad UUID: {e}")
+
+    # --- SUB-TAB: ANALYTICS ---
+    elif selected_subtab == "analitica":
+        st.markdown('<div class="section-header">Segmentación y Concentración de Capital</div>', unsafe_allow_html=True)
+        
         with st.container():
             if not df_filtered.empty:
                 # 1. Cálculo de Quintiles
@@ -1628,6 +1880,20 @@ elif selected_module == "Cuenta T":
                 
             else:
                 st.info("Sin datos suficientes para segmentación.")
+
+    # --- SUB-TAB: PRELLENADO ---
+    elif selected_subtab == "prellenado":
+        st.markdown('<div class="section-header">Prellenados de Declaración</div>', unsafe_allow_html=True)
+        st.info("Módulo de Prellenados - Próximamente dispondrá de la conciliación automática con la plataforma del SAT.")
+        
+        # Placeholder content
+        p1, p2 = st.columns(2)
+        with p1:
+            st.metric("Estimación ISR", "$0.00", delta="Pendiente")
+            st.caption("Cálculo estimado basado en flujos detectados.")
+        with p2:
+            st.metric("Estimación IVA", "$0.00", delta="Pendiente")
+            st.caption("Balance de IVA trasladado vs acreditable.")
 
 
 

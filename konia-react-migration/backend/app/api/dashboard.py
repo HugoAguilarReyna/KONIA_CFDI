@@ -5,6 +5,7 @@ from ..core.auth import decode_token
 from ..core.database import get_database
 from datetime import datetime
 import re
+import math
 
 router = APIRouter()
 
@@ -45,6 +46,10 @@ async def get_current_user_and_company(request: Request):
 @router.get("/matriz-resumen")
 async def get_matriz_resumen(
     periodo: str = Query(..., description="Format YYYY-MM"),
+    tipo: Optional[str] = None,
+    metodo: Optional[str] = None,
+    monto_min: Optional[float] = None,
+    monto_max: Optional[float] = None,
     user: dict = Depends(get_current_user_and_company)
 ):
     db = get_database()
@@ -54,10 +59,43 @@ async def get_matriz_resumen(
     company_id = user["company_id"]
     
     # 1. Fetch Data
-    cursor = fiscal_db["matriz_resumen"].find({
+    filtro = {
         "company_id": company_id,
         "periodo": periodo
-    })
+    }
+    if tipo:
+        mapped_flujo = []
+        for t in tipo.split(","):
+            if t.lower() == "ingreso": mapped_flujo.append("EMITIDOS")
+            if t.lower() == "egreso": mapped_flujo.append("RECIBIDOS")
+        if mapped_flujo:
+            filtro["flujo"] = {"$in": mapped_flujo}
+    if metodo:
+        mapped_metodo = [m.split(" ")[0] for m in metodo.split(",")]
+        filtro["segmento"] = {"$in": mapped_metodo}
+
+    if monto_min is not None or monto_max is not None:
+        expr_conditions = []
+        if monto_min is not None:
+            expr_conditions.append({
+                "$gte": [
+                    {"$cond": [{"$eq": ["$flujo", "RECIBIDOS"]}, {"$multiply": ["$monto", -1]}, "$monto"]},
+                    monto_min
+                ]
+            })
+        if monto_max is not None:
+            expr_conditions.append({
+                "$lte": [
+                    {"$cond": [{"$eq": ["$flujo", "RECIBIDOS"]}, {"$multiply": ["$monto", -1]}, "$monto"]},
+                    monto_max
+                ]
+            })
+        if len(expr_conditions) == 1:
+            filtro["$expr"] = expr_conditions[0]
+        else:
+            filtro["$expr"] = {"$and": expr_conditions}
+
+    cursor = fiscal_db["matriz_resumen"].find(filtro)
     docs = list(cursor)
     
     # 2. Process Data into Nested Structure
@@ -176,6 +214,10 @@ async def get_matriz_evolucion(
 @router.get("/matriz-resumen/tabla")
 async def get_tabla_matriz(
     periodo: str, # "2026-02" - selected current month
+    tipo: Optional[str] = None,
+    metodo: Optional[str] = None,
+    monto_min: Optional[float] = None,
+    monto_max: Optional[float] = None,
     user: dict = Depends(get_current_user_and_company)
 ):
     """Calculates previous month automatically and returns comparative data."""
@@ -194,18 +236,34 @@ async def get_tabla_matriz(
         periodo_anterior = None
 
     # 2. Query Current Month
-    docs_actual = list(fiscal_db["matriz_resumen"].find({
-        "company_id": company_id,
-        "periodo": periodo
-    }))
+    filtro_actual = {"company_id": company_id, "periodo": periodo}
+    if metodo:
+        mapped_metodo = [m.split(" ")[0] for m in metodo.split(",")]
+        filtro_actual["segmento"] = {"$in": mapped_metodo}
+        
+    if monto_min is not None or monto_max is not None:
+        monto_filter = {}
+        if monto_min is not None: monto_filter["$gte"] = monto_min
+        if monto_max is not None: monto_filter["$lte"] = monto_max
+        filtro_actual["monto"] = monto_filter
+
+    docs_actual = list(fiscal_db["matriz_resumen"].find(filtro_actual))
     
     # 3. Query Previous Month (if exists)
     docs_anterior = []
     if periodo_anterior:
-        docs_anterior = list(fiscal_db["matriz_resumen"].find({
-            "company_id": company_id,
-            "periodo": periodo_anterior
-        }))
+        filtro_anterior = {"company_id": company_id, "periodo": periodo_anterior}
+        if metodo:
+            mapped_metodo = [m.split(" ")[0] for m in metodo.split(",")]
+            filtro_anterior["segmento"] = {"$in": mapped_metodo}
+            
+        if monto_min is not None or monto_max is not None:
+            monto_filter = {}
+            if monto_min is not None: monto_filter["$gte"] = monto_min
+            if monto_max is not None: monto_filter["$lte"] = monto_max
+            filtro_anterior["monto"] = monto_filter
+            
+        docs_anterior = list(fiscal_db["matriz_resumen"].find(filtro_anterior))
     
     # 4. Organize in matrices
     def to_dict(docs):
@@ -257,7 +315,11 @@ async def get_detalle_uuid(
     flujo: Optional[str] = None,
     segmento: Optional[str] = None,
     uuid_search: Optional[str] = None,
-    saldo_min: Optional[float] = None,
+    saldo_min: Optional[float] = None, # Legacy filter
+    monto_min: Optional[float] = None,
+    monto_max: Optional[float] = None,
+    tipo: Optional[str] = None,
+    metodo: Optional[str] = None,
     user: dict = Depends(get_current_user_and_company)
 ):
     db = get_database()
@@ -274,24 +336,86 @@ async def get_detalle_uuid(
         filtro["uuid"] = {"$regex": uuid_search, "$options":"i"}
     if saldo_min is not None:
         filtro["saldo_acumulado"] = {"$gte": saldo_min}
+        
+    # Apply new global range amount filters considering RECIBIDOS as negative cashflow
+    if monto_min is not None or monto_max is not None:
+        expr_conditions = []
+        if monto_min is not None:
+            expr_conditions.append({
+                "$gte": [
+                    {"$cond": [
+                        {"$eq": ["$flujo", "RECIBIDOS"]}, 
+                        {"$multiply": ["$saldo_acumulado", -1]}, 
+                        "$saldo_acumulado"
+                    ]},
+                    monto_min
+                ]
+            })
+        if monto_max is not None:
+            expr_conditions.append({
+                "$lte": [
+                    {"$cond": [
+                        {"$eq": ["$flujo", "RECIBIDOS"]}, 
+                        {"$multiply": ["$saldo_acumulado", -1]}, 
+                        "$saldo_acumulado"
+                    ]},
+                    monto_max
+                ]
+            })
+            
+        if len(expr_conditions) == 1:
+            filtro["$expr"] = expr_conditions[0]
+        else:
+            filtro["$expr"] = {"$and": expr_conditions}
+
+    if tipo:
+        # Ingreso -> EMITIDOS, Egreso -> RECIBIDOS (as a rough proxy, or we use tipo_comprobante if we had it, but DB has flujo)
+        # We need to map: "Ingreso" -> "EMITIDOS", "Egreso" -> "RECIBIDOS" ? 
+        mapped_flujo = []
+        for t in tipo.split(","):
+            if t.lower() == "ingreso": mapped_flujo.append("EMITIDOS")
+            if t.lower() == "egreso": mapped_flujo.append("RECIBIDOS")
+        if mapped_flujo:
+            filtro["flujo"] = {"$in": mapped_flujo}
+    if metodo:
+        mapped_metodo = [m.split(" ")[0] for m in metodo.split(",")]
+        # Only overwrite if segmento is not already strictly defined or combine them
+        if "segmento" not in filtro:
+            filtro["segmento"] = {"$in": mapped_metodo}
+
+    print("DEBUG DETALLE-UUID FILTERS =>", filtro, "MONTO_MIN:", monto_min, "MONTO_MAX:", monto_max)
 
     total = fiscal_db["detalle_uuid"].count_documents(filtro)
 
     # Registros paginados con conceptos
-    registros = list(fiscal_db["detalle_uuid"].find(
+    registros_raw = list(fiscal_db["detalle_uuid"].find(
         filtro,
         {"_id":0, "uuid":1, "segmento":1, "flujo":1,
-         "saldo_acumulado":1, "conceptos":1}
+         "saldo_acumulado":1, "conceptos":1,
+         "nombre_emisor":1, "rfc_emisor":1,
+         "nombre_receptor":1, "rfc_receptor":1}
     ).sort("saldo_acumulado", -1)
      .skip((page-1)*limit)
      .limit(limit))
 
-    # KPIs sin paginación
+    # Transformar registros: RECIBIDOS -> negativos
+    registros = []
+    for r in registros_raw:
+        if r.get("flujo") == "RECIBIDOS":
+            r["saldo_acumulado"] = -abs(r["saldo_acumulado"])
+            if "conceptos" in r:
+                for k, v in r["conceptos"].items():
+                    if isinstance(v, (int, float)):
+                        r["conceptos"][k] = -abs(v)
+        registros.append(r)
+
     pipeline_kpis = [
         {"$match": filtro},
         {"$group": {
             "_id": None,
-            "saldo_total": {"$sum": "$saldo_acumulado"},
+            "saldo_total": {"$sum": {
+                "$cond": [{"$eq": ["$flujo", "RECIBIDOS"]}, {"$multiply": ["$saldo_acumulado", -1]}, "$saldo_acumulado"]
+            }},
             "count": {"$sum": 1},
             "emitidos": {"$sum": {
                 "$cond":[{"$eq":["$flujo","EMITIDOS"]},1,0]}},
@@ -317,10 +441,16 @@ async def get_detalle_uuid(
     distribucion = {d["_id"]: d["count"] for d in dist_raw}
 
     # Top 10 por saldo_acumulado
-    top10 = list(fiscal_db["detalle_uuid"].find(
+    top10_raw = list(fiscal_db["detalle_uuid"].find(
         filtro,
-        {"_id":0, "uuid":1, "segmento":1, "saldo_acumulado":1}
+        {"_id":0, "uuid":1, "segmento":1, "flujo":1, "saldo_acumulado":1}
     ).sort("saldo_acumulado", -1).limit(10))
+    
+    top10 = []
+    for t in top10_raw:
+        if t.get("flujo") == "RECIBIDOS":
+            t["saldo_acumulado"] = -abs(t["saldo_acumulado"])
+        top10.append(t)
 
     return {
         "total": total,
@@ -464,12 +594,12 @@ async def get_trazabilidad_uuids(
 
         return [{
             "uuid": u["_id"],
-            "ultimo_saldo": float(u.get("ultimo_saldo") or 0.0),
+            "ultimo_saldo": float(u.get("ultimo_saldo") or 0.0) if not math.isnan(float(u.get("ultimo_saldo") or 0.0)) else 0.0,
             "total_eventos": u.get("total_eventos", 0),
             "primer_evento": safe_fecha(u.get("primer_evento")) or "—",
             "ultimo_evento": safe_fecha(u.get("ultimo_evento")) or "—",
-            "total_monto": float(u.get("total_monto") or 0.0),
-            "estado": "LIQUIDADO" if abs(float(u.get("ultimo_saldo") or 0.0)) < 0.01 else ("NEGATIVO" if float(u.get("ultimo_saldo") or 0.0) <= -0.01 else "INSOLUTO"),
+            "total_monto": float(u.get("total_monto") or 0.0) if not math.isnan(float(u.get("total_monto") or 0.0)) else 0.0,
+            "estado": "LIQUIDADO" if abs(float(u.get("ultimo_saldo") or 0.0) if not math.isnan(float(u.get("ultimo_saldo") or 0.0)) else 0.0) < 0.01 else ("NEGATIVO" if (float(u.get("ultimo_saldo") or 0.0) if not math.isnan(float(u.get("ultimo_saldo") or 0.0)) else 0.0) <= -0.01 else "INSOLUTO"),
             "tiene_pago": bool(u.get("tiene_pago", 0)),
             "periodos": u.get("periodos", [])
         } for u in uuids]
@@ -494,7 +624,7 @@ async def get_trazabilidad_detalle(
         filtro_company = company_id_raw
 
     # Búsqueda insensible a mayúsculas/minúsculas usando regex
-    eventos = list(db["trazabilidad_uuid"].find(
+    eventos_raw = list(db["trazabilidad_uuid"].find(
         {
             "company_id": filtro_company, 
             "uuid_raiz": {"$regex": f"^{uuid_raiz}$", "$options": "i"}
@@ -502,29 +632,74 @@ async def get_trazabilidad_detalle(
         {"_id": 0}
     ).sort("fecha", 1))
 
-    if not eventos:
+    if not eventos_raw:
         print(f"DEBUG: UUID {uuid_raiz} not found in trazabilidad_uuid for company {company_id_raw}")
         raise HTTPException(status_code=404, detail=f"UUID no encontrado en el sistema de trazabilidad")
 
-    primer = eventos[0]
-    ultimo = eventos[-1]
+    # Deduplicate events based on critical fields to avoid showing identical repeated rows
+    eventos = []
+    seen = set()
+    for e in eventos_raw:
+        sig = (e.get("fecha"), e.get("monto"), e.get("concepto"), e.get("uuid_relacionado"), e.get("tipo_relacion"))
+        if sig not in seen:
+            seen.add(sig)
+            eventos.append(e)
+
+    # The first event is now guaranteed to be the Base invoice (Total Facturado) natively from the ETL
+    if not eventos:
+        raise HTTPException(status_code=404, detail="UUID no encontrado en el sistema de trazabilidad")
+    
+    # NEW: Extract metadata for propagation (saving storage space in DB)
+    metadata = {
+        "rfc_emisor": None, "nombre_emisor": None, 
+        "rfc_receptor": None, "nombre_receptor": None,
+        "periodo": eventos[0].get("periodo"),
+        "company_id": eventos[0].get("company_id")
+    }
+    for e in eventos:
+        if e.get("tipo_relacion") == "BASE":
+            metadata["rfc_emisor"] = e.get("rfc_emisor")
+            metadata["nombre_emisor"] = e.get("nombre_emisor")
+            metadata["rfc_receptor"] = e.get("rfc_receptor")
+            metadata["nombre_receptor"] = e.get("nombre_receptor")
+            break
+            
     monto_original = float(eventos[0].get("monto", 0.0))
-    saldo_final = float(ultimo.get("saldo_acumulado") or 0.0)
+        
+    # Calculate running balance (saldo_acumulado) since ETL may not provide it for all event types
+    saldo_actual = 0.0
+    for e in eventos:
+        monto_val = float(e.get("monto") or 0.0)
+        if math.isnan(monto_val):
+            monto_val = 0.0
+        e["monto"] = monto_val
+        saldo_actual += monto_val
+        e["saldo_acumulado"] = saldo_actual
+        e["concepto"] = e.get("concepto", "")
+        e["tipo_relacion"] = e.get("tipo_relacion", "")
+        e["fecha"] = e.get("fecha", "")
+        
+        # NEW: Inject missing metadata if pruned from DB
+        if not e.get("rfc_emisor"): e["rfc_emisor"] = metadata["rfc_emisor"]
+        if not e.get("nombre_emisor"): e["nombre_emisor"] = metadata["nombre_emisor"]
+        if not e.get("rfc_receptor"): e["rfc_receptor"] = metadata["rfc_receptor"]
+        if not e.get("nombre_receptor"): e["nombre_receptor"] = metadata["nombre_receptor"]
+
+    saldo_final = saldo_actual if not math.isnan(saldo_actual) else 0.0
+    monto_original = monto_original if not math.isnan(monto_original) else 0.0
     
     # Calculate payments as the difference between original amount and final balance
     total_pagos = max(0.0, monto_original - saldo_final)
+    if math.isnan(total_pagos):
+        total_pagos = 0.0
 
     estado = ("LIQUIDADO" if abs(saldo_final) < 0.01
               else "INSOLUTO" if saldo_final > 0
               else "SALDO_NEGATIVO")
 
-    # Clean raw events before returning them as JSON to avoid missing keys causing issues in frontend
-    for e in eventos:
-        e["saldo_acumulado"] = float(e.get("saldo_acumulado") or 0.0)
-        e["monto"] = float(e.get("monto") or 0.0)
-        e["concepto"] = e.get("concepto", "")
-        e["tipo_relacion"] = e.get("tipo_relacion", "")
-        e["fecha"] = e.get("fecha", "")
+    pct_liquidado = (abs(total_pagos) / abs(monto_original) * 100) if monto_original != 0 else 0
+    if math.isnan(pct_liquidado):
+        pct_liquidado = 0.0
 
     return {
         "uuid_raiz": uuid_raiz,
@@ -532,19 +707,16 @@ async def get_trazabilidad_detalle(
         "kpis": {
             "total_eventos": len(eventos),
             "saldo_final": saldo_final,
-            "primer_evento": primer.get("fecha"),
-            "ultimo_evento": ultimo.get("fecha"),
+            "primer_evento": eventos[0].get("fecha"),
+            "ultimo_evento": eventos[-1].get("fecha"),
             "monto_original": monto_original,
             "total_pagado": abs(total_pagos),
             "estado": estado,
-            "pct_liquidado": (
-                abs(total_pagos) / abs(monto_original) * 100
-                if monto_original != 0 else 0
-            )
+            "pct_liquidado": pct_liquidado
         },
         "evolucion_saldo": [
-            {"fecha": e.get("fecha", ""), "saldo": float(e.get("saldo_acumulado") or 0.0),
-             "concepto": e.get("concepto", ""), "monto": float(e.get("monto") or 0.0)}
+            {"fecha": e.get("fecha", ""), "saldo": e.get("saldo_acumulado", 0.0),
+             "concepto": e.get("concepto", ""), "monto": e.get("monto", 0.0)}
             for e in eventos
         ]
     }

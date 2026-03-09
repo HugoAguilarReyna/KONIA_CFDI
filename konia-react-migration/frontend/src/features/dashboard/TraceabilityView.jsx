@@ -14,13 +14,11 @@ import useFilterStore from '../../stores/useFilterStore';
 import { useTrazabilidadStore } from '../../stores/useTrazabilidadStore';
 import dashboardService from './dashboardService';
 
-const formatMoney = (amount, includeSign = false) => {
+const formatMoney = (amount, includeSign = true) => {
     if (amount === undefined || amount === null) return "$0.00";
-    const str = new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-US', {
         style: 'currency', currency: 'USD', minimumFractionDigits: 2
-    }).format(Math.abs(amount));
-    if (includeSign) { return amount < 0 ? `-${str}` : str; }
-    return str;
+    }).format(amount);
 };
 
 // Iconos por tipo de concepto
@@ -344,7 +342,8 @@ const KPICard = ({ title, value, icon: Icon, accentColor }) => (
 
 
 const TraceabilityView = () => {
-    const { periodo } = useFilterStore();
+    const { filters } = useFilterStore();
+    const periodo = `${filters.year}-${String(filters.month).padStart(2, '0')}`;
     const { uuidSeleccionado: globalUUID, setUUIDTrazabilidad } = useTrazabilidadStore();
 
     const [uuidsDisponibles, setUuidsDisponibles] = useState([]);
@@ -374,6 +373,8 @@ const TraceabilityView = () => {
         setUuidsDisponibles([]);
         setPage(1);
         setHasMore(true);
+        setUuidSeleccionado(null);
+        setUUIDTrazabilidad(null);
         loadUuidsDisponibles(1, true);
     }, [periodo]);
 
@@ -664,8 +665,8 @@ const TraceabilityView = () => {
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
                                 <KPICard title="Total Eventos" value={data.kpis.total_eventos.toLocaleString()} icon={Layers} accentColor="#6B84F3" />
                                 <KPICard title="Saldo Final" value={formatMoney(data.kpis.saldo_final, true)} icon={DollarSign} accentColor={data.kpis.estado === "LIQUIDADO" ? "#26A69A" : data.kpis.estado === "INSOLUTO" ? "#FF8A65" : "#ef4444"} />
-                                <KPICard title="Primer Evento" value={data.kpis.primer_evento.split('T')[0] || data.kpis.primer_evento} icon={Calendar} accentColor="#FFCA28" />
-                                <KPICard title="Último Evento" value={data.kpis.ultimo_evento.split('T')[0] || data.kpis.ultimo_evento} icon={Clock} accentColor="#785799" />
+                                <KPICard title="Primer Evento" value={data.kpis.primer_evento?.split('T')[0] || "—"} icon={Calendar} accentColor="#FFCA28" />
+                                <KPICard title="Último Evento" value={data.kpis.ultimo_evento?.split('T')[0] || "—"} icon={Clock} accentColor="#785799" />
                             </div>
 
                             {/* BARRA DE PROGRESO DE LIQUIDACIÓN */}
@@ -714,138 +715,172 @@ const TraceabilityView = () => {
                         </div>
 
                         {/* Tabla */}
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                            <thead>
-                                <tr style={{ background: "#f8fafc" }}>
-                                    {[
-                                        { label: "#", w: "48px", align: "center" },
-                                        { label: "FOLIO FISCAL", w: "240px", align: "left" },
-                                        { label: "FECHA", w: "120px", align: "left" },
-                                        { label: "CONCEPTO", w: "200px", align: "left" },
-                                        { label: "TIPO\nRELACIÓN", w: "100px", align: "center" },
-                                        { label: "UUID RELACIONADO", w: "auto", align: "left" },
-                                        { label: "MONTO", w: "130px", align: "right" },
-                                        { label: "SALDO\nACUMULADO", w: "130px", align: "right" }
-                                    ].map((col, i) => (
-                                        <th key={i} style={{ padding: "12px 16px", textAlign: col.align, fontSize: "10px", fontFamily: "Montserrat", fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "pre-line", lineHeight: 1.4, borderBottom: "2px solid #e2e8f0", width: col.w }}>
-                                            {col.label}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.eventos.map((ev, i) => {
-                                    const { icon: Icon, color, bg } = iconoConcepto(ev.concepto);
-                                    const esOriginal = ev.tipo_relacion === "ORIGINAL";
-                                    const esUltimo = i === data.eventos.length - 1;
+                        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                            <table style={{ width: "100%", minWidth: "1600px", borderCollapse: "collapse" }}>
+                                <thead>
+                                    <tr style={{ background: "#f8fafc" }}>
+                                        {[
+                                            { label: "#", w: "48px", align: "center" },
+                                            { label: "FOLIO FISCAL", w: "240px", align: "left" },
+                                            { label: "FECHA", w: "110px", align: "left" },
+                                            { label: "CONCEPTO", w: "190px", align: "left" },
+                                            { label: "TIPO\nRELACIÓN", w: "95px", align: "center" },
+                                            { label: "UUID RELACIONADO", w: "240px", align: "left" },
+                                            { label: "NOMBRE\nEMISOR", w: "175px", align: "left" },
+                                            { label: "RFC\nEMISOR", w: "140px", align: "left" },
+                                            { label: "NOMBRE\nRECEPTOR", w: "175px", align: "left" },
+                                            { label: "RFC\nRECEPTOR", w: "140px", align: "left" },
+                                            { label: "MONTO", w: "130px", align: "right" },
+                                            { label: "SALDO\nACUMULADO", w: "130px", align: "right" }
+                                        ].map((col, i) => (
+                                            <th key={i} style={{ padding: "12px 16px", textAlign: col.align, fontSize: "10px", fontFamily: "Montserrat", fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "pre-line", lineHeight: 1.4, borderBottom: "2px solid #e2e8f0", width: col.w }}>
+                                                {col.label}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.eventos.map((ev, i) => {
+                                        const { icon: Icon, color, bg } = iconoConcepto(ev.concepto);
+                                        const esOriginal = ev.tipo_relacion === "ORIGINAL";
+                                        const esUltimo = i === data.eventos.length - 1;
 
-                                    return (
-                                        <tr key={i}
-                                            style={{
-                                                borderBottom: esUltimo ? "none" : "1px solid #f1f5f9",
-                                                background: esOriginal ? "#f0fdf9" : "white",
-                                                transition: "background 0.15s"
-                                            }}
-                                            onMouseEnter={e => { if (!esOriginal) e.currentTarget.style.background = "#fafbff" }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = esOriginal ? "#f0fdf9" : "white" }}
-                                        >
-                                            {/* # */}
-                                            <td style={{ padding: "16px", textAlign: "center", fontSize: "12px", fontFamily: "Montserrat", fontWeight: 700, color: "#cbd5e1" }}>{i + 1}</td>
+                                        return (
+                                            <tr key={i}
+                                                style={{
+                                                    borderBottom: esUltimo ? "none" : "1px solid #f1f5f9",
+                                                    background: esOriginal ? "#f0fdf9" : "white",
+                                                    transition: "background 0.15s"
+                                                }}
+                                                onMouseEnter={e => { if (!esOriginal) e.currentTarget.style.background = "#fafbff" }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = esOriginal ? "#f0fdf9" : "white" }}
+                                            >
+                                                {/* # */}
+                                                <td style={{ padding: "16px", textAlign: "center", fontSize: "12px", fontFamily: "Montserrat", fontWeight: 700, color: "#cbd5e1" }}>{i + 1}</td>
 
-                                            {/* Folio Fiscal (Timeline) */}
-                                            <td style={{ padding: "16px" }}>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                                                        <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: color, border: `2px solid white`, boxShadow: `0 0 0 2px ${color}40`, flexShrink: 0 }} />
-                                                        {!esUltimo && (
-                                                            <div style={{ width: "2px", height: "36px", background: `linear-gradient(${color}60, transparent)`, marginTop: "2px" }} />
+                                                {/* Folio Fiscal (Timeline) */}
+                                                <td style={{ padding: "16px" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                                                            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: color, border: `2px solid white`, boxShadow: `0 0 0 2px ${color}40`, flexShrink: 0 }} />
+                                                            {!esUltimo && (
+                                                                <div style={{ width: "2px", height: "36px", background: `linear-gradient(${color}60, transparent)`, marginTop: "2px" }} />
+                                                            )}
+                                                        </div>
+                                                        <span style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#1e293b", letterSpacing: "-0.01em" }}>
+                                                            {ev.folio_fiscal || uuidSeleccionado}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Fecha */}
+                                                <td style={{ padding: "16px" }}>
+                                                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#64748b", background: "#f8fafc", padding: "3px 8px", borderRadius: "6px" }}>
+                                                        {ev.fecha ? ev.fecha.slice(0, 10) : ''}
+                                                    </span>
+                                                </td>
+
+                                                {/* Concepto */}
+                                                <td style={{ padding: "16px" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                        <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                            <Icon size={14} color={color} />
+                                                        </div>
+                                                        <span style={{ fontSize: "12px", fontFamily: "Montserrat", fontWeight: 600, color: "#334155", lineHeight: 1.3 }}>{ev.concepto}</span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Tipo Relación */}
+                                                <td style={{ padding: "16px", textAlign: "center" }}>
+                                                    {chipRelacion(ev.tipo_relacion)}
+                                                </td>
+
+                                                {/* UUID Relacionado */}
+                                                <td style={{ padding: "16px" }}>
+                                                    {ev.uuid_relacionado ? (
+                                                        <span
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleSelectUUID(ev.uuid_relacionado);
+                                                            }}
+                                                            title="Ver trazabilidad"
+                                                            style={{ fontFamily: "JetBrains Mono", fontSize: "11px", color: "#6B84F3", cursor: "pointer", textDecoration: "none", borderBottom: "1px dashed #6B84F360", paddingBottom: "1px", transition: "color 0.15s" }}
+                                                        >
+                                                            {ev.uuid_relacionado}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ color: "#cbd5e1", fontSize: "14px" }}>—</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Nombre Emisor */}
+                                                <td style={{ padding: "16px", minWidth: "175px" }}>
+                                                    <span style={{ fontFamily: "Montserrat", fontSize: "12px", color: "#334155", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "175px" }} title={ev.nombre_emisor || '—'}>
+                                                        {ev.nombre_emisor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                                    </span>
+                                                </td>
+
+                                                {/* RFC Emisor */}
+                                                <td style={{ padding: "16px", minWidth: "140px" }}>
+                                                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#5b6af0", letterSpacing: "0.03em", fontWeight: 600 }}>
+                                                        {ev.rfc_emisor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                                    </span>
+                                                </td>
+
+                                                {/* Nombre Receptor */}
+                                                <td style={{ padding: "16px", minWidth: "175px" }}>
+                                                    <span style={{ fontFamily: "Montserrat", fontSize: "12px", color: "#334155", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "175px" }} title={ev.nombre_receptor || '—'}>
+                                                        {ev.nombre_receptor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                                    </span>
+                                                </td>
+
+                                                {/* RFC Receptor */}
+                                                <td style={{ padding: "16px", minWidth: "140px" }}>
+                                                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#0d9488", letterSpacing: "0.03em", fontWeight: 600 }}>
+                                                        {ev.rfc_receptor || <span style={{ color: "#cbd5e1" }}>—</span>}
+                                                    </span>
+                                                </td>
+
+                                                {/* Monto */}
+                                                <td style={{ padding: "16px", textAlign: "right" }}>
+                                                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 700, color: esOriginal ? "#26A69A" : "#FF8A65" }}>
+                                                        {esOriginal ? "+" : "-"}
+                                                        {formatMoney(Math.abs(ev.monto))}
+                                                    </span>
+                                                </td>
+
+                                                {/* Saldo Acumulado con progreso */}
+                                                <td style={{ padding: "16px", textAlign: "right" }}>
+                                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                                                        <span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 800, color: ev.saldo_acumulado > 0 ? "#26A69A" : ev.saldo_acumulado < 0 ? "#FF8A65" : "#cbd5e1" }}>
+                                                            {formatMoney(ev.saldo_acumulado)}
+                                                        </span>
+                                                        {i > 0 && data.eventos[0].monto > 0 && (
+                                                            <div style={{ width: "80px", height: "3px", background: "#f1f5f9", borderRadius: "2px", overflow: "hidden" }}>
+                                                                <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, (ev.saldo_acumulado / data.eventos[0].monto) * 100))}%`, background: "#26A69A", borderRadius: "2px", transition: "width 0.5s ease" }} />
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#1e293b", letterSpacing: "-0.01em" }}>
-                                                        {ev.folio_fiscal || uuidSeleccionado}
-                                                    </span>
-                                                </div>
-                                            </td>
-
-                                            {/* Fecha */}
-                                            <td style={{ padding: "16px" }}>
-                                                <span style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#64748b", background: "#f8fafc", padding: "3px 8px", borderRadius: "6px" }}>
-                                                    {ev.fecha ? ev.fecha.slice(0, 10) : ''}
-                                                </span>
-                                            </td>
-
-                                            {/* Concepto */}
-                                            <td style={{ padding: "16px" }}>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                                    <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                                        <Icon size={14} color={color} />
-                                                    </div>
-                                                    <span style={{ fontSize: "12px", fontFamily: "Montserrat", fontWeight: 600, color: "#334155", lineHeight: 1.3 }}>{ev.concepto}</span>
-                                                </div>
-                                            </td>
-
-                                            {/* Tipo Relación */}
-                                            <td style={{ padding: "16px", textAlign: "center" }}>
-                                                {chipRelacion(ev.tipo_relacion)}
-                                            </td>
-
-                                            {/* UUID Relacionado */}
-                                            <td style={{ padding: "16px" }}>
-                                                {ev.uuid_relacionado ? (
-                                                    <span
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            handleSelectUUID(ev.uuid_relacionado);
-                                                        }}
-                                                        title="Ver trazabilidad"
-                                                        style={{ fontFamily: "JetBrains Mono", fontSize: "12px", color: "#6B84F3", cursor: "pointer", textDecoration: "none", borderBottom: "1px dashed #6B84F360", paddingBottom: "1px", transition: "color 0.15s" }}
-                                                    >
-                                                        {ev.uuid_relacionado}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ color: "#cbd5e1", fontSize: "14px" }}>—</span>
-                                                )}
-                                            </td>
-
-                                            {/* Monto */}
-                                            <td style={{ padding: "16px", textAlign: "right" }}>
-                                                <span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 700, color: esOriginal ? "#26A69A" : "#FF8A65" }}>
-                                                    {esOriginal ? "+" : "-"}
-                                                    {formatMoney(Math.abs(ev.monto))}
-                                                </span>
-                                            </td>
-
-                                            {/* Saldo Acumulado con progreso */}
-                                            <td style={{ padding: "16px", textAlign: "right" }}>
-                                                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                                                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 800, color: ev.saldo_acumulado > 0 ? "#26A69A" : ev.saldo_acumulado < 0 ? "#FF8A65" : "#cbd5e1" }}>
-                                                        {formatMoney(ev.saldo_acumulado)}
-                                                    </span>
-                                                    {i > 0 && data.eventos[0].monto > 0 && (
-                                                        <div style={{ width: "80px", height: "3px", background: "#f1f5f9", borderRadius: "2px", overflow: "hidden" }}>
-                                                            <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, (ev.saldo_acumulado / data.eventos[0].monto) * 100))}%`, background: "#26A69A", borderRadius: "2px", transition: "width 0.5s ease" }} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                            <tfoot>
-                                <tr style={{ background: "linear-gradient(90deg, #6B84F308, white)", borderTop: "2px solid #e2e8f0" }}>
-                                    <td colSpan={6} style={{ padding: "14px 16px", fontSize: "12px", fontFamily: "Montserrat", fontWeight: 700, color: "#64748b", textAlign: "right" }}>
-                                        SALDO NETO FINAL
-                                    </td>
-                                    <td style={{ padding: "14px 16px" }} />
-                                    <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                                        <span style={{ fontFamily: "JetBrains Mono", fontSize: "15px", fontWeight: 800, color: data.eventos[data.eventos.length - 1]?.saldo_acumulado > 0 ? "#26A69A" : "#FF8A65" }}>
-                                            {formatMoney(data.eventos[data.eventos.length - 1]?.saldo_acumulado ?? 0)}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ background: "linear-gradient(90deg, #6B84F308, white)", borderTop: "2px solid #e2e8f0" }}>
+                                        <td colSpan={10} style={{ padding: "14px 16px", fontSize: "12px", fontFamily: "Montserrat", fontWeight: 700, color: "#64748b", textAlign: "right" }}>
+                                            SALDO NETO FINAL
+                                        </td>
+                                        <td style={{ padding: "14px 16px" }} />
+                                        <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                                            <span style={{ fontFamily: "JetBrains Mono", fontSize: "15px", fontWeight: 800, color: data.eventos[data.eventos.length - 1]?.saldo_acumulado > 0 ? "#26A69A" : "#FF8A65" }}>
+                                                {formatMoney(data.eventos[data.eventos.length - 1]?.saldo_acumulado ?? 0)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
                 )}
         </div>
